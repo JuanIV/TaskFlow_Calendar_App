@@ -701,4 +701,18 @@
     <string name="s3_shortcut_add_long">Añadir una tarea rápida</string>
     <string name="s3_shortcut_focus_short">Enfoque</string>
     <string name="s3_shortcut_focus_long">Abrir el modo enfoque</string>
+
+    <!-- TEXTOS PAQUETE 8 (ONBOARDING) -->
+    <string name="s3_onb_skip">Saltar</string>
+    <string name="s3_onb_next">Siguiente</string>
+    <string name="s3_onb_p1_title">Bienvenido a TaskFlow</string>
+    <string name="s3_onb_p1_text">Calendario, tareas y rutinas en un solo sitio.</string>
+    <string name="s3_onb_p2_title">Calendario y tareas</string>
+    <string name="s3_onb_p2_text">Crea eventos con iconos y recordatorios, y tareas con duración estimada o que se repiten.</string>
+    <string name="s3_onb_p3_title">Rutinas y rachas</string>
+    <string name="s3_onb_p3_text">Define rutinas, hazlas en orden si quieres y mantén tu racha.</string>
+    <string name="s3_onb_p4_title">Enfoque y alarmas</string>
+    <string name="s3_onb_p4_text">Usa el temporizador Pomodoro y activa alarmas a pantalla completa para tus eventos importantes.</string>
+    <string name="s3_onb_sample">Cargar datos de ejemplo</string>
+    <string name="s3_onb_empty">Empezar desde cero</string>
 </resources>

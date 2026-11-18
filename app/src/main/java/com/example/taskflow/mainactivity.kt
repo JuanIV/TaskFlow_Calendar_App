@@ -13,6 +13,8 @@ import com.example.taskflow.capture.CaptureContract
 import com.example.taskflow.scheduling.AlarmContract
 import com.example.taskflow.ui.capture.QuickCaptureDialog
 import com.example.taskflow.ui.navigation.AppNavigation
+import com.example.taskflow.ui.onboarding.OnboardingScreen
+import com.example.taskflow.ui.onboarding.OnboardingViewModel
 import com.example.taskflow.ui.permissions.PermissionsDialog
 import com.example.taskflow.ui.theme.TaskFlowTheme
 import com.example.taskflow.ui.theme.ThemeViewModel
@@ -22,6 +24,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class mainactivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
+    private val onboardingViewModel: OnboardingViewModel by viewModels()
     private var pendingRoute by mutableStateOf<String?>(null)
     private var quickCaptureText by mutableStateOf<String?>(null)
 
@@ -47,15 +50,22 @@ class mainactivity : ComponentActivity() {
             val themeMode by themeViewModel.themeMode.collectAsState()
             val dynamic by themeViewModel.dynamicColor.collectAsState()
             val accent by themeViewModel.accent.collectAsState()
+            val onboardingDone by onboardingViewModel.done.collectAsState()
             TaskFlowTheme(themeMode = themeMode, dynamicColor = dynamic, accentArgb = accent) {
-                PermissionsDialog()
-                AppNavigation(
-                    pendingRoute = pendingRoute,
-                    onRouteHandled = { pendingRoute = null }
-                )
-                val captured = quickCaptureText
-                if (captured != null) {
-                    QuickCaptureDialog(initialText = captured, onDismiss = { quickCaptureText = null })
+                when (onboardingDone) {
+                    null -> Unit
+                    false -> OnboardingScreen(onFinish = { loadSample -> onboardingViewModel.finish(loadSample) })
+                    true -> {
+                        PermissionsDialog()
+                        AppNavigation(
+                            pendingRoute = pendingRoute,
+                            onRouteHandled = { pendingRoute = null }
+                        )
+                        val captured = quickCaptureText
+                        if (captured != null) {
+                            QuickCaptureDialog(initialText = captured, onDismiss = { quickCaptureText = null })
+                        }
+                    }
                 }
             }
         }
