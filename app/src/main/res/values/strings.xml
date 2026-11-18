@@ -1,0 +1,694 @@
+<resources>
+    <string name="app_name">TaskFlow</string>
+    <string name="tab_calendar">Calendario</string>
+    <string name="tab_tasks">Tareas sueltas</string>
+    <string name="tab_routines">Rutinas</string>
+    <string name="settings">Ajustes</string>
+
+    <string name="add_task">Añadir tarea</string>
+    <string name="edit_task">Editar tarea</string>
+    <string name="new_task">Nueva tarea</string>
+    <string name="task_concept">Concepto de la tarea</string>
+    <string name="task_concept_required">El concepto no puede estar vacio</string>
+    <string name="task_date">Fecha (opcional)</string>
+    <string name="no_date">Sin fecha</string>
+    <string name="save">Guardar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Borrar</string>
+    <string name="delete_task_confirm">¿Estas seguro de que quieres borrar esta tarea?</string>
+    <string name="completed_tasks">Completadas (%1$d)</string>
+    <string name="no_loose_tasks">No hay tareas sueltas pendientes</string>
+
+    <string name="new_event">Nuevo evento</string>
+    <string name="edit_event">Editar evento</string>
+    <string name="event_title">Titulo del evento</string>
+    <string name="all_day">Todo el dia</string>
+    <string name="start_time">Hora de inicio</string>
+    <string name="color">Color</string>
+    <string name="reminders">Recordatorios</string>
+    <string name="add_reminder">Añadir recordatorio</string>
+    <string name="reminders_cleared_warning">Los recordatorios se han borrado al cambiar el tipo de evento.</string>
+    <string name="delete_event_confirm">¿Estas seguro de que quieres borrar este evento?</string>
+
+    <string name="new_routine">Nueva rutina</string>
+    <string name="edit_routine">Editar rutina</string>
+    <string name="routine_name">Nombre de la rutina</string>
+    <string name="recurrence_type">Tipo de repeticion</string>
+    <string name="weekdays">Dias de la semana</string>
+    <string name="every_n_days">Repetir cada X dias</string>
+    <string name="interval_days">Dias de intervalo</string>
+    <string name="anchor_date">Fecha de inicio</string>
+    <string name="trigger_time">Aparece a partir de las</string>
+    <string name="is_active">Rutina activa</string>
+    <string name="delete_routine_confirm">¿Estas seguro de que quieres borrar esta rutina y todas sus tareas e historial?</string>
+    <string name="no_routines">No hay rutinas creadas</string>
+    <string name="routine_tasks">Tareas de la rutina</string>
+    <string name="routine_applies_today">Aplica hoy</string>
+    <string name="routine_not_today">No aplica hoy</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 3.3) -->
+    <string name="event_start_date">Fecha de inicio</string>
+    <string name="event_end_date">Fecha de fin (opcional)</string>
+    <string name="event_end_time">Hora de fin</string>
+    <string name="event_notes">Notas</string>
+    <string name="event_location">Ubicacion</string>
+    <string name="open_in_maps">Abrir en Maps</string>
+    <string name="recurrence">Repeticion</string>
+    <string name="recurrence_none">No se repite</string>
+    <string name="recurrence_daily">Cada dia</string>
+    <string name="recurrence_weekly">Cada semana</string>
+    <string name="recurrence_monthly_day">Cada mes (mismo dia)</string>
+    <string name="recurrence_monthly_nth">Cada mes (mismo dia de la semana)</string>
+    <string name="recurrence_yearly">Cada año</string>
+    <string name="recurrence_custom">Personalizado...</string>
+
+    <string name="custom_recurrence_title">Repeticion personalizada</string>
+    <string name="repeat_every">Repetir cada</string>
+    <string name="days_unit">dias</string>
+    <string name="weeks_unit">semanas</string>
+    <string name="months_unit">meses</string>
+    <string name="years_unit">años</string>
+    <string name="repeat_on">Repetir el</string>
+    <string name="ends">Termina</string>
+    <string name="end_never">Nunca</string>
+    <string name="end_until">El dia</string>
+    <string name="end_after">Despues de</string>
+    <string name="occurrences">repeticiones</string>
+
+    <string name="edit_recurring_title">Editar evento recurrente</string>
+    <string name="delete_recurring_title">Borrar evento recurrente</string>
+    <string name="this_event_only">Solo este evento</string>
+    <string name="this_and_following">Este y los siguientes</string>
+    <string name="all_events">Todos los eventos</string>
+
+    <string name="validation_end_before_start">El fin no puede ser anterior al inicio</string>
+    <string name="event_detail_title">Detalles del evento</string>
+    <string name="edit">Editar</string>
+    <string name="change">Cambiar</string>
+
+    <string name="mon">L</string>
+    <string name="tue">M</string>
+    <string name="wed">X</string>
+    <string name="thu">J</string>
+    <string name="fri">V</string>
+    <string name="sat">S</string>
+    <string name="sun">D</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 6: TAREAS) -->
+    <string name="priority">Prioridad</string>
+    <string name="priority_none">Sin prioridad</string>
+    <string name="priority_low">Baja</string>
+    <string name="priority_medium">Media</string>
+    <string name="priority_high">Alta</string>
+    <string name="subtasks">Subtareas</string>
+    <string name="add_subtask">Añadir subtarea</string>
+    <string name="move_to_day">Mover a otro día</string>
+    <string name="postpone_tomorrow">Posponer para mañana</string>
+    <string name="task_moved">Tarea movida</string>
+    <string name="undo">Deshacer</string>
+    <string name="complete_parent_with_subtasks">¿Completar también las subtareas?</string>
+    <string name="yes">Sí</string>
+    <string name="only_this">Solo esta</string>
+    <string name="sort_mode_manual">Orden manual</string>
+    <string name="sort_mode_priority">Por prioridad</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 7: PAPELERA E HISTORIAL) -->
+    <string name="trash">Papelera</string>
+    <string name="history">Historial de tareas</string>
+    <string name="restore">Restaurar</string>
+    <string name="delete_permanently">Eliminar definitivamente</string>
+    <string name="empty_trash">Vaciar papelera</string>
+    <string name="trash_empty">La papelera está vacía</string>
+    <string name="history_empty">No hay tareas en el historial</string>
+    <string name="confirm_empty_trash">¿Estás seguro de que deseas vaciar la papelera de forma permanente?</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 8.2: RUTINAS AVANZADAS) -->
+    <string name="routine_end_time">Hora límite (opcional)</string>
+    <string name="end_warning">Aviso antes de terminar</string>
+    <string name="grace_days">Días de gracia al mes</string>
+    <string name="start_date">Fecha de inicio</string>
+    <string name="end_date">Fecha de fin (opcional)</string>
+    <string name="pause_routine">Pausar</string>
+    <string name="resume_routine">Reanudar</string>
+    <string name="duplicate_routine">Duplicar</string>
+    <string name="save_as_template">Guardar como plantilla</string>
+    <string name="templates">Plantillas</string>
+    <string name="create_from_template">Crear rutina desde plantilla</string>
+    <string name="is_optional">Opcional</string>
+    <string name="only_these_days">Solo estos días</string>
+    <string name="paused_until">En pausa hasta: %1$s</string>
+    <string name="paused_indefinitely">En pausa indefinidamente</string>
+    <string name="indefinitely">Indefinidamente</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 9.2: ESTADISTICAS) -->
+    <string name="tab_statistics">Estadisticas</string>
+    <string name="global_streak">Racha global</string>
+    <string name="current_streak">Racha actual</string>
+    <string name="best_streak">Mejor racha</string>
+    <string name="compliance">Cumplimiento</string>
+    <string name="compliance_30d">30 dias</string>
+    <string name="compliance_7d">7 dias</string>
+    <string name="compliance_90d">90 dias</string>
+    <string name="days_in_a_row">dias</string>
+    <string name="times_in_a_row">veces seguidas</string>
+    <string name="status_completed">Completado</string>
+    <string name="status_failed">Fallado</string>
+    <string name="status_grace">Gracia</string>
+    <string name="status_paused">Pausado</string>
+    <string name="status_none">Sin planificar</string>
+
+    <!-- NUEVOS TEXTOS ETAPA 2 (PASO 10: NOTIFICACIONES Y AJUSTES) -->
+    <string name="channel_persistent_routines">Rutinas fijas</string>
+    <string name="channel_task_reminders">Recordatorios de tareas</string>
+    <string name="channel_routine_alerts">Avisos de fin de rutina</string>
+    <string name="channel_summaries">Resúmenes diarios</string>
+
+    <string name="complete_all">Completar todo</string>
+    <string name="postpone_to_tomorrow">Posponer a mañana</string>
+
+    <string name="morning_summary">Resumen matutino</string>
+    <string name="evening_summary">Resumen de cierre</string>
+    <string name="quiet_hours">Horario de silencio</string>
+    <string name="from">Desde las</string>
+    <string name="to">Hasta las</string>
+    <string name="notification_channels">Canales del sistema</string>
+    <string name="open_channel_settings">Ajustes de sistema</string>
+
+    <!-- TEXTOS PAQUETE 2 (NOTIFICACIONES PERSISTENTES) -->
+    <string name="task_overdue_label">Atrasada</string>
+    <string name="optional_label">(opcional)</string>
+    <string name="all_completed_title">Todo completado</string>
+    <string name="all_completed_text">¡Buen trabajo! Has terminado tus tareas.</string>
+    <string name="action_undo">Deshacer</string>
+    <string name="tasks_pending_title">Tienes %1$d tareas pendientes</string>
+    <string name="routine_pending_title">Rutina: %1$s</string>
+
+    <!-- TEXTOS PAQUETE 3 (DETALLE EVENTO Y RECURRENCIA) -->
+    <string name="event_loading">Cargando evento...</string>
+    <string name="event_not_found">El evento no existe o fue eliminado.</string>
+    <string name="map_app_not_found">No se encontró ninguna aplicación de mapas.</string>
+
+    <string name="recurrence_daily_label">Se repite cada día</string>
+    <string name="recurrence_daily_interval">Se repite cada %1$d días</string>
+    <string name="recurrence_weekly_label">Se repite cada semana los %1$s</string>
+    <string name="recurrence_weekly_interval">Se repite cada %1$d semanas los %2$s</string>
+    <string name="recurrence_monthly">Se repite cada mes</string>
+    <string name="recurrence_monthly_interval">Se repite cada %1$d meses</string>
+    <string name="recurrence_yearly_label">Se repite cada año</string>
+    <string name="recurrence_yearly_interval">Se repite cada %1$d años</string>
+    <string name="recurrence_until"> hasta el %1$s</string>
+    <string name="recurrence_count">, %1$d veces en total</string>
+
+    <string name="day_mon">lunes</string>
+    <string name="day_tue">martes</string>
+    <string name="day_wed">miércoles</string>
+    <string name="day_thu">jueves</string>
+    <string name="day_fri">viernes</string>
+    <string name="day_sat">sábado</string>
+    <string name="day_sun">domingo</string>
+
+    <!-- TEXTOS PAQUETE 4 (FORMULARIOS Y SELECTORES) -->
+    <string name="clear">Quitar</string>
+    <string name="reminder_at_time">A la hora</string>
+    <string name="reminder_10m">10 min antes</string>
+    <string name="reminder_30m">30 min antes</string>
+    <string name="reminder_1h">1 hora antes</string>
+    <string name="reminder_1d">1 día antes</string>
+    <string name="delete_task">Eliminar tarea</string>
+    <string name="no_warning">Sin aviso</string>
+    <string name="warning_15m">15 min</string>
+    <string name="warning_30m">30 min</string>
+    <string name="warning_1h">1 hora</string>
+    <string name="invalid_window">La hora de fin debe ser posterior a la de inicio en el día lógico</string>
+    <string name="routine_recurrence_weekdays">Días concretos</string>
+    <string name="routine_recurrence_interval">Cada X días</string>
+    <string name="custom_recurrence">Personalizado...</string>
+
+    <!-- TEXTOS PAQUETE 5 (PRIORIDAD DE EVENTOS) -->
+    <string name="priority_title">Prioridad</string>
+    <string name="priority_important">Importante</string>
+    <string name="priority_normal">Normal</string>
+    <string name="priority_secondary">Secundario (Fondo)</string>
+
+    <!-- TEXTOS PAQUETE 6 (VISTAS DE CALENDARIO) -->
+    <string name="view_month">Mes</string>
+    <string name="view_week">Semana</string>
+    <string name="view_day">Día</string>
+    <string name="view_agenda">Agenda</string>
+    <string name="today">Hoy</string>
+    <string name="no_events_agenda">No hay eventos próximos.</string>
+    <string name="more_events_plus">+%1$d</string>
+
+    <!-- TEXTOS PAQUETE 7 (TAREAS AVANZADAS) -->
+    <string name="overdue_tasks">Atrasadas</string>
+    <string name="today_tasks">Hoy</string>
+    <string name="loose_tasks">Sin fecha</string>
+    <string name="future_tasks">Futuras</string>
+    <string name="postpone_task">Posponer</string>
+    <string name="task_deleted">Tarea eliminada</string>
+    <string name="subtasks_count">%1$d/%2$d subtareas</string>
+
+    <!-- TEXTOS PAQUETE 8 (ESTADÍSTICAS Y CIERRE) -->
+    <string name="tab_stats">Estadísticas</string>
+    <string name="heatmap_title">Historial de 12 semanas</string>
+    <string name="barchart_title">Completado por semana</string>
+    <string name="streak_current">Racha actual</string>
+    <string name="streak_longest">Mejor racha</string>
+    <string name="mock_data_button">Generar datos de prueba</string>
+    <string name="day_perfect">Día perfecto</string>
+    <string name="day_partial">Día parcial</string>
+    <string name="day_failed">Día fallido</string>
+
+    <!-- TEXTOS PAQUETE 9 (BÚSQUEDA Y MANTENIMIENTO) -->
+    <string name="tab_search">Buscar</string>
+    <string name="search_hint">Buscar tareas, eventos o rutinas...</string>
+    <string name="no_results">No se encontraron resultados.</string>
+    <string name="type_task">Tarea</string>
+    <string name="type_event">Evento</string>
+    <string name="type_routine">Rutina</string>
+
+    <!-- TEXTOS PAQUETE 9 (AJUSTES Y BACKUPS) -->
+    <string name="tab_settings">Ajustes</string>
+    <string name="settings_general">General</string>
+    <string name="day_start_hour">Hora de inicio del día</string>
+    <string name="day_start_desc">Los eventos antes de esta hora cuentan para el día anterior.</string>
+    <string name="settings_notifications">Notificaciones y Permisos</string>
+    <string name="enable_notifications">Habilitar notificaciones</string>
+    <string name="permission_required">Permiso requerido</string>
+    <string name="permission_rationale">TaskFlow necesita permiso para enviar recordatorios de tareas y eventos.</string>
+    <string name="settings_data">Datos y Copias de Seguridad</string>
+    <string name="backup_create">Crear copia de seguridad</string>
+    <string name="backup_restore">Restaurar copia</string>
+    <string name="backup_success">Copia guardada con éxito</string>
+    <string name="backup_failed">Error al guardar la copia</string>
+    <string name="restore_success">Datos restaurados. Reinicia la app.</string>
+    <string name="restore_failed">Error al restaurar los datos</string>
+    <string name="restart_required">Requiere reinicio</string>
+
+    <!-- TEXTOS PAQUETE 3 (ALARMAS Y NOTIFICACIONES) -->
+    <string name="s2_ch_event_name">Recordatorios de eventos</string>
+    <string name="s2_ch_event_desc">Avisos puntuales de tus eventos</string>
+    <string name="s2_ch_task_name">Recordatorios de tareas</string>
+    <string name="s2_ch_task_desc">Avisos con hora de tus tareas</string>
+    <string name="s2_ch_alert_name">Avisos de fin de rutina</string>
+    <string name="s2_ch_alert_desc">Aviso antes de que acabe la ventana de una rutina</string>
+    <string name="s2_ch_summary_name">Resúmenes diarios</string>
+    <string name="s2_ch_summary_desc">Resumen matutino y de cierre del día</string>
+    <string name="s2_ch_tasks_name">Tareas de hoy</string>
+    <string name="s2_ch_tasks_desc">Notificación fija con las tareas de hoy</string>
+    <string name="s2_ch_routines_name">Rutinas fijas</string>
+    <string name="s2_ch_routines_desc">Notificaciones fijas de tus rutinas</string>
+    <string name="s2_ch_loose_name">Tareas sueltas pendientes</string>
+    <string name="s2_ch_loose_desc">Recordatorio periódico de tareas sin día</string>
+    <plurals name="s2_tasks_pending">
+        <item quantity="one">%d tarea pendiente hoy</item>
+        <item quantity="other">%d tareas pendientes hoy</item>
+    </plurals>
+    <plurals name="s2_loose_pending">
+        <item quantity="one">Tienes %d tarea suelta pendiente</item>
+        <item quantity="other">Tienes %d tareas sueltas pendientes</item>
+    </plurals>
+    <string name="s2_overdue_prefix">Atrasada: </string>
+    <string name="s2_and_n_more">y %1$d más...</string>
+    <string name="s2_complete_all">Completar todo</string>
+    <string name="s2_complete">Completar</string>
+    <string name="s2_postpone_tomorrow">Posponer a mañana</string>
+    <string name="s2_undo">Deshacer</string>
+    <string name="s2_all_done_title">Todo completado</string>
+    <string name="s2_all_done_text">Has completado todas las tareas de hoy.</string>
+    <string name="s2_routine_progress">%1$d/%2$d completadas</string>
+    <string name="s2_optional_suffix"> (opcional)</string>
+    <string name="s2_all_day">Todo el día</string>
+    <string name="s2_task_reminder_text">Tarea pendiente</string>
+    <string name="s2_routine_end_title">Fin de rutina</string>
+    <string name="s2_routine_end_text">A la rutina %1$s le quedan %2$d min y faltan %3$d tareas.</string>
+    <string name="s2_summary_morning_title">Resumen de hoy</string>
+    <string name="s2_summary_counts">Tareas: %1$d, rutinas: %2$d</string>
+    <string name="s2_summary_evening_title">Pendiente de hoy</string>
+    <string name="s2_summary_streak">Racha actual: %1$d</string>
+    <string name="s2_summary_done_title">Día completado</string>
+    <string name="s2_summary_done_text">Todo hecho hoy. Racha actual: %1$d.</string>
+
+    <!-- TEXTOS PAQUETE 4 (EVENTOS FORMULARIO Y DETALLE) -->
+    <string name="s2_event_new">Nuevo evento</string>
+    <string name="s2_event_edit">Editar evento</string>
+    <string name="s2_event_title_label">Título</string>
+    <string name="s2_event_start_date">Inicio</string>
+    <string name="s2_event_end_date">Fin (opcional)</string>
+    <string name="s2_event_start_time">Hora de inicio</string>
+    <string name="s2_event_end_time">Hora de fin</string>
+    <string name="s2_none">Ninguna</string>
+    <string name="s2_color">Color</string>
+    <string name="s2_event_location">Ubicación</string>
+    <string name="s2_event_notes">Notas</string>
+    <string name="s2_importance">Importancia</string>
+    <string name="s2_importance_important">Importante</string>
+    <string name="s2_importance_secondary">Secundario</string>
+    <string name="s2_importance_help">Los eventos secundarios solo se ven en la vista Día y al abrir un día.</string>
+    <string name="s2_reminders">Recordatorios</string>
+    <string name="s2_add_reminder">Añadir recordatorio</string>
+    <string name="s2_remove">Quitar</string>
+    <string name="s2_reminders_cleared">Los recordatorios se han borrado al cambiar entre todo el día y con hora.</string>
+    <string name="s2_err_end_before_start">El fin no puede ser anterior al inicio</string>
+    <string name="s2_repeat">Repetir</string>
+    <string name="s2_rec_none">No se repite</string>
+    <string name="s2_rec_daily">Cada día</string>
+    <string name="s2_rec_weekly">Cada semana</string>
+    <string name="s2_rec_monthly">Cada mes</string>
+    <string name="s2_rec_yearly">Cada año</string>
+    <string name="s2_rec_custom">Personalizado...</string>
+    <string name="s2_rem_at_start">A la hora del evento</string>
+    <string name="s2_rem_min">%1$d min antes</string>
+    <string name="s2_rem_hour">1 hora antes</string>
+    <string name="s2_rem_2hours">2 horas antes</string>
+    <string name="s2_rem_1day">1 día antes</string>
+    <string name="s2_rem_same_day_9">El mismo día a las 09:00</string>
+    <string name="s2_rem_prev_day_20">El día anterior a las 20:00</string>
+    <string name="s2_rem_2days_9">2 días antes a las 09:00</string>
+    <string name="s2_rec_dialog_title">Repetición personalizada</string>
+    <string name="s2_rec_every">Repetir cada</string>
+    <string name="s2_unit_days">días</string>
+    <string name="s2_unit_weeks">semanas</string>
+    <string name="s2_unit_months">meses</string>
+    <string name="s2_unit_years">años</string>
+    <string name="s2_rec_on">Repetir el</string>
+    <string name="s2_rec_monthly_day">Mismo día del mes</string>
+    <string name="s2_rec_monthly_nth">Mismo día de la semana</string>
+    <string name="s2_rec_ends">Termina</string>
+    <string name="s2_rec_end_never">Nunca</string>
+    <string name="s2_rec_end_until">El día</string>
+    <string name="s2_rec_end_count">Después de</string>
+    <string name="s2_rec_occurrences">repeticiones</string>
+    <string name="s2_back">Volver</string>
+    <string name="s2_edit">Editar</string>
+    <string name="s2_event_deleted">Evento borrado</string>
+    <string name="s2_delete_event_title">Borrar evento</string>
+    <string name="s2_delete_event_msg">¿Seguro que quieres borrar este evento?</string>
+    <string name="s2_event_not_found">No se encuentra el evento</string>
+    <string name="s2_event_loading">Cargando...</string>
+    <string name="s2_maps_missing">No hay ninguna app de mapas</string>
+    <string name="s2_open_maps">Abrir en mapas</string>
+    <string name="s2_recurrence_label">Repetición</string>
+
+    <!-- TEXTOS PAQUETE 5 (CALENDAR VIEWS) -->
+    <string name="s2_wd_1">L</string>
+    <string name="s2_wd_2">M</string>
+    <string name="s2_wd_3">X</string>
+    <string name="s2_wd_4">J</string>
+    <string name="s2_wd_5">V</string>
+    <string name="s2_wd_6">S</string>
+    <string name="s2_wd_7">D</string>
+    <string name="s2_view_month">Mes</string>
+    <string name="s2_view_week">Semana</string>
+    <string name="s2_view_day">Día</string>
+    <string name="s2_view_agenda">Agenda</string>
+    <string name="s2_today">Hoy</string>
+    <string name="s2_prev">Anterior</string>
+    <string name="s2_next">Siguiente</string>
+    <string name="s2_search">Buscar</string>
+    <string name="s2_settings">Ajustes</string>
+    <string name="s2_menu">Menú</string>
+    <string name="s2_new_event">Nuevo evento</string>
+    <string name="s2_new_task">Nueva tarea</string>
+    <string name="s2_add">Añadir</string>
+    <string name="s2_events">Eventos</string>
+    <string name="s2_tasks">Tareas</string>
+    <string name="s2_no_events_day">Sin eventos este día</string>
+    <string name="s2_no_tasks_day">Sin tareas para este día</string>
+    <string name="s2_overdue_header">Atrasadas</string>
+    <string name="s2_agenda_empty">No hay nada planificado</string>
+    <string name="s2_secondary_tag">Secundario</string>
+    <string name="s2_more_count">+%1$d</string>
+    <string name="s2_task_deleted">Tarea borrada</string>
+
+    <!-- TEXTOS PAQUETE 6 (TAREAS, HISTORIAL Y PAPELERA) -->
+    <string name="s2_task_new">Nueva tarea</string>
+    <string name="s2_task_edit">Editar tarea</string>
+    <string name="s2_task_title_label">Concepto de la tarea</string>
+    <string name="s2_task_date">Fecha</string>
+    <string name="s2_task_time">Hora</string>
+    <string name="s2_priority">Prioridad</string>
+    <string name="s2_prio_none">Ninguna</string>
+    <string name="s2_prio_low">Baja</string>
+    <string name="s2_prio_medium">Media</string>
+    <string name="s2_prio_high">Alta</string>
+    <string name="s2_subtasks">Subtareas</string>
+    <string name="s2_add_subtask">Añadir subtarea</string>
+    <string name="s2_trem_at">A la hora</string>
+    <string name="s2_trem_same_day_9">Ese día a las 09:00</string>
+    <string name="s2_trem_pick">Elegir fecha y hora...</string>
+    <string name="s2_trem_abs">%1$s a las %2$s</string>
+    <string name="s2_trem_dropped">Se han quitado los recordatorios relativos porque ha cambiado la fecha o la hora.</string>
+    <string name="s2_task_delete_title">Borrar tarea</string>
+    <string name="s2_task_delete_msg">¿Seguro que quieres borrar esta tarea?</string>
+    <string name="s2_task_moved">Tarea movida</string>
+    <string name="s2_sec_overdue">Atrasadas</string>
+    <string name="s2_sec_today">Hoy</string>
+    <string name="s2_sec_loose">Tareas sueltas</string>
+    <string name="s2_sec_future">Próximas</string>
+    <string name="s2_completed_count">Completadas (%1$d)</string>
+    <string name="s2_sort_manual">Orden: manual</string>
+    <string name="s2_sort_priority">Orden: prioridad</string>
+    <string name="s2_move_today">Mover a hoy</string>
+    <string name="s2_move_tomorrow">Mover a mañana</string>
+    <string name="s2_move_pick">Elegir fecha...</string>
+    <string name="s2_since">Desde el %1$s</string>
+    <string name="s2_subtasks_count">%1$d/%2$d</string>
+    <string name="s2_complete_subtasks_title">Completar subtareas</string>
+    <string name="s2_complete_subtasks_msg">¿Completar también las subtareas?</string>
+    <string name="s2_yes">Sí</string>
+    <string name="s2_only_this">Solo esta</string>
+    <string name="s2_add_subtask_title">Nueva subtarea</string>
+    <string name="s2_history_title">Historial de tareas</string>
+    <string name="s2_history_empty">No hay tareas completadas</string>
+    <string name="s2_mark_pending">Marcar como pendiente</string>
+    <string name="s2_search_hint">Buscar</string>
+    <string name="s2_no_tasks">No hay tareas</string>
+    <string name="s2_reorder">Reordenar</string>
+    <string name="s2_more">Más opciones</string>
+
+    <!-- TEXTOS PAQUETE 7 (RUTINAS) -->
+    <string name="s2_template_saved">Plantilla guardada</string>
+    <string name="s2_routine_new">Nueva rutina</string>
+    <string name="s2_routine_edit">Editar rutina</string>
+    <string name="s2_routine_name">Nombre</string>
+    <string name="s2_routine_active">Rutina activa</string>
+    <string name="s2_rtype_weekdays">Días de la semana</string>
+    <string name="s2_rtype_interval">Cada X días</string>
+    <string name="s2_routine_every_x">Cada cuántos días</string>
+    <string name="s2_routine_anchor">Desde el</string>
+    <string name="s2_routine_start_time">Aparece a partir de las</string>
+    <string name="s2_routine_end_time">Hora límite (opcional)</string>
+    <string name="s2_routine_warning">Aviso antes del fin</string>
+    <string name="s2_routine_no_warning">Sin aviso</string>
+    <string name="s2_routine_warning_min">%1$d min</string>
+    <string name="s2_routine_start_date">Empieza el (opcional)</string>
+    <string name="s2_routine_end_date">Termina el (opcional)</string>
+    <string name="s2_routine_grace">Días de gracia al mes</string>
+    <string name="s2_err_name">Escribe un nombre</string>
+    <string name="s2_err_days">Selecciona al menos un día</string>
+    <string name="s2_err_interval">El intervalo debe ser 1 o más</string>
+    <string name="s2_err_window">La hora límite debe ser posterior a la de inicio</string>
+    <string name="s2_err_dates">La fecha de fin no puede ser anterior a la de inicio</string>
+    <string name="s2_every_n_days">Cada %1$d días</string>
+    <string name="s2_routine_from_time">Desde las %1$s</string>
+    <string name="s2_routine_until_time"> hasta las %1$s</string>
+    <string name="s2_routine_paused_until">En pausa hasta el %1$s</string>
+    <string name="s2_routine_paused">En pausa</string>
+    <string name="s2_routine_inactive">Inactiva</string>
+    <string name="s2_routine_today_progress">Hoy: %1$d/%2$d</string>
+    <string name="s2_routine_not_today">No aplica hoy</string>
+    <string name="s2_routine_streak">Racha: %1$d</string>
+    <string name="s2_routines_empty">No hay rutinas creadas</string>
+    <string name="s2_routines_finished">Finalizadas (%1$d)</string>
+    <string name="s2_templates">Plantillas</string>
+    <string name="s2_routine_tasks">Tareas de la rutina</string>
+    <string name="s2_routine_add_task">Añadir tarea</string>
+    <string name="s2_routine_edit_task">Editar tarea</string>
+    <string name="s2_routine_task_name">Nombre de la tarea</string>
+    <string name="s2_routine_optional">Opcional</string>
+    <string name="s2_routine_only_days">Solo estos días (vacío = todos)</string>
+    <string name="s2_routine_only_days_label">Solo %1$s</string>
+    <string name="s2_routine_pause">Pausar</string>
+    <string name="s2_routine_resume">Reanudar</string>
+    <string name="s2_routine_pause_until">Hasta una fecha...</string>
+    <string name="s2_routine_pause_forever">Indefinidamente</string>
+    <string name="s2_routine_pause_title">Pausar rutina</string>
+    <string name="s2_routine_duplicate">Duplicar</string>
+    <string name="s2_routine_copy_suffix">%1$s (copia)</string>
+    <string name="s2_routine_save_template">Guardar como plantilla</string>
+    <string name="s2_routine_delete_title">Borrar rutina</string>
+    <string name="s2_routine_delete_msg">Se borrará la rutina con todas sus tareas y su historial. No se puede deshacer.</string>
+    <string name="s2_routine_task_delete_msg">¿Seguro que quieres borrar esta tarea de la rutina?</string>
+    <string name="s2_routine_applies_today">Aplica hoy</string>
+    <string name="s2_routine_loading">Cargando...</string>
+    <string name="s2_create_from_template">Crear rutina</string>
+    <string name="s2_no_templates">No hay plantillas guardadas</string>
+
+    <!-- TEXTOS PAQUETE 8 (ESTADISTICAS) -->
+    <string name="s2_close">Cerrar</string>
+    <string name="s2_stats_global">Racha global</string>
+    <string name="s2_stats_current">Racha actual</string>
+    <string name="s2_stats_best">Mejor racha</string>
+    <string name="s2_stats_days">%1$d días</string>
+    <string name="s2_stats_times">%1$d veces</string>
+    <string name="s2_stats_compliance_30">Últimos 30 días</string>
+    <string name="s2_stats_heatmap_title">Últimas 26 semanas</string>
+    <string name="s2_stats_bars_title">Cumplimiento semanal (8 semanas)</string>
+    <string name="s2_stats_compliance_title">Cumplimiento</string>
+    <string name="s2_stats_7d">7 días</string>
+    <string name="s2_stats_30d">30 días</string>
+    <string name="s2_stats_90d">90 días</string>
+    <string name="s2_stats_no_data">Sin datos todavía. Los datos aparecen cuando termina cada día.</string>
+    <string name="s2_stats_completed">Completado</string>
+    <string name="s2_stats_failed">Fallado</string>
+    <string name="s2_stats_grace">Día de gracia</string>
+    <string name="s2_stats_paused">Pausado</string>
+    <string name="s2_stats_none">Sin planificar</string>
+    <string name="s2_stats_day_detail">%1$d/%2$d tareas</string>
+    <string name="s2_stats_seed">Generar datos de prueba</string>
+    <string name="s2_stats_clear">Borrar historial de estadísticas</string>
+    <string name="s2_stats_seed_msg">Se añadirán registros de ejemplo de los últimos 60 días. Solo disponible en compilaciones de depuración.</string>
+    <string name="s2_stats_clear_msg">Se borrará todo el historial de estadísticas. No se puede deshacer.</string>
+    <string name="s2_streak_badge">Racha %1$d</string>
+
+    <!-- TEXTOS PAQUETE 9 (AJUSTES, BACKUP Y BUSQUEDA) -->
+    <string name="s2_settings_title">Ajustes</string>
+    <string name="s2_set_general">General</string>
+    <string name="s2_set_day_start">El día empieza a las</string>
+    <string name="s2_set_overdue">Tareas atrasadas</string>
+    <string name="s2_overdue_show">Mantener visibles</string>
+    <string name="s2_overdue_move">Mover automáticamente a hoy</string>
+    <string name="s2_set_notifications">Notificaciones</string>
+    <string name="s2_set_today_time">Hora de Tareas de hoy</string>
+    <string name="s2_set_morning">Resumen matutino</string>
+    <string name="s2_set_evening">Resumen de cierre</string>
+    <string name="s2_set_quiet">Horario de silencio</string>
+    <string name="s2_set_quiet_from">Desde</string>
+    <string name="s2_set_quiet_to">Hasta</string>
+    <string name="s2_set_loose">Recordatorio de tareas sueltas</string>
+    <string name="s2_set_loose_every">Frecuencia</string>
+    <string name="s2_every_hours">Cada %1$d h</string>
+    <string name="s2_set_loose_from">Desde las</string>
+    <string name="s2_set_loose_to">Hasta las</string>
+    <string name="s2_err_loose_window">La hora de fin debe ser posterior a la de inicio</string>
+    <string name="s2_set_channels">Canales de notificación</string>
+    <string name="s2_set_data">Datos</string>
+    <string name="s2_set_backup_create">Crear copia de seguridad</string>
+    <string name="s2_set_backup_restore">Restaurar copia</string>
+    <string name="s2_set_trash">Papelera</string>
+    <string name="s2_set_history">Historial de tareas</string>
+    <string name="s2_backup_ok">Copia guardada</string>
+    <string name="s2_backup_fail">No se pudo guardar la copia</string>
+    <string name="s2_restore_ok">Copia restaurada. La app se reiniciará.</string>
+    <string name="s2_restore_fail">El archivo no es una copia válida o es de una versión más nueva</string>
+    <string name="s2_restore_title">Restaurar copia</string>
+    <string name="s2_restore_msg">Se reemplazarán TODOS los datos actuales por los de la copia. La app se reiniciará.</string>
+    <string name="s2_set_permissions">Permisos</string>
+    <string name="s2_perm_notifications">Notificaciones</string>
+    <string name="s2_perm_exact">Alarmas exactas</string>
+    <string name="s2_perm_battery">Sin ahorro de batería</string>
+    <string name="s2_perm_granted">Concedido</string>
+    <string name="s2_perm_missing">Falta</string>
+    <string name="s2_perm_fix">Corregir</string>
+    <string name="s2_no_results">Sin resultados</string>
+    <string name="s2_routines_title">Rutinas</string>
+
+    <!-- TEXTOS PAQUETE 10 (WIDGETS) -->
+    <string name="s2_widget_today_label">Tareas de hoy</string>
+    <string name="s2_widget_agenda_label">Agenda</string>
+    <string name="s2_widget_today_desc">Tus tareas pendientes de hoy</string>
+    <string name="s2_widget_agenda_desc">Eventos y tareas de los próximos 7 días</string>
+    <string name="s2_widget_no_tasks">No tienes tareas para hoy</string>
+    <string name="s2_widget_nothing">Nada planificado esta semana</string>
+
+    <!-- TEXTOS PAQUETE 2 (FASE 3: APARIENCIA) -->
+    <string name="s3_set_appearance">Apariencia</string>
+    <string name="s3_theme_mode">Tema</string>
+    <string name="s3_theme_system">Según el sistema</string>
+    <string name="s3_theme_light">Claro</string>
+    <string name="s3_theme_dark">Oscuro</string>
+    <string name="s3_dynamic_color">Colores dinámicos del sistema</string>
+    <string name="s3_accent_color">Color principal</string>
+    <string name="s3_first_day">La semana empieza en</string>
+    <string name="s3_day_monday">Lunes</string>
+    <string name="s3_day_saturday">Sábado</string>
+    <string name="s3_day_sunday">Domingo</string>
+    <string name="s3_time_format">Formato de hora</string>
+    <string name="s3_time_system">Según el sistema</string>
+    <string name="s3_time_24">24 horas</string>
+    <string name="s3_time_12">12 horas (AM/PM)</string>
+    <string name="s3_time_picker_note">Los selectores de hora siguen el formato del sistema.</string>
+    <string name="s3_custom_palette">Paleta de colores propia</string>
+    <string name="s3_palette_title">Colores propios</string>
+    <string name="s3_palette_add">Añadir este color</string>
+    <string name="s3_palette_empty">Aún no has añadido colores</string>
+    <string name="s3_palette_hint">Los colores propios aparecen junto a los demás al elegir el color de un evento o una rutina. Toca uno para quitarlo.</string>
+
+    <!-- TEXTOS PAQUETE 3 (TAREAS ESTIMADAS Y RECURRENTES) -->
+    <string name="s3_estimated">Duración estimada</string>
+    <string name="s3_duration_min">%1$d min</string>
+    <string name="s3_duration_h">%1$d h</string>
+    <string name="s3_duration_hm">%1$d h %2$d min</string>
+    <string name="s3_repeat_task">Repetir tarea</string>
+    <string name="s3_task_weekly_hint">Sin días marcados se repite el mismo día de la semana.</string>
+    <string name="s3_task_repeats">Se repite</string>
+    <string name="s3_task_total_time">Tiempo estimado pendiente: %1$s</string>
+    <string name="s3_focus_time">Tiempo dedicado: %1$s</string>
+
+    <!-- TEXTOS PAQUETE 4 (MODO ENFOQUE Y POMODORO) -->
+    <string name="s3_focus_title">Modo enfoque</string>
+    <string name="s3_focus_start">Iniciar foco</string>
+    <string name="s3_focus_mode_pomodoro">Pomodoro</string>
+    <string name="s3_focus_mode_timer">Temporizador</string>
+    <string name="s3_focus_task">Tarea (opcional)</string>
+    <string name="s3_focus_no_task">Sin tarea</string>
+    <string name="s3_focus_minutes">Minutos</string>
+    <string name="s3_focus_start_btn">Empezar</string>
+    <string name="s3_focus_stop">Parar</string>
+    <string name="s3_focus_skip">Saltar fase</string>
+    <string name="s3_focus_phase_focus">Enfoque</string>
+    <string name="s3_focus_phase_short">Descanso corto</string>
+    <string name="s3_focus_phase_long">Descanso largo</string>
+    <string name="s3_focus_phase_timer">Temporizador</string>
+    <string name="s3_focus_cycle">Ciclo %1$d de %2$d</string>
+    <string name="s3_focus_today">Hoy llevas %1$s de enfoque</string>
+    <string name="s3_focus_config">Duración de las fases</string>
+    <string name="s3_focus_cfg_focus">Enfoque (min)</string>
+    <string name="s3_focus_cfg_short">Descanso corto (min)</string>
+    <string name="s3_focus_cfg_long">Descanso largo (min)</string>
+    <string name="s3_focus_cfg_cycles">Ciclos hasta el descanso largo</string>
+    <string name="s3_focus_cfg_save">Guardar duraciones</string>
+    <string name="s3_focus_phase_over">Fase terminada</string>
+    <string name="s3_focus_next_phase">Ahora toca: %1$s</string>
+    <string name="s3_focus_timer_done">Temporizador terminado</string>
+    <string name="s3_focus_notif_stop">Parar</string>
+    <string name="s3_focus_notif_skip">Saltar</string>
+    <string name="s3_ch_focus_running_name">Enfoque en curso</string>
+    <string name="s3_ch_focus_running_desc">Cuenta atrás del temporizador o del Pomodoro</string>
+    <string name="s3_ch_focus_alerts_name">Fin de fase de enfoque</string>
+    <string name="s3_ch_focus_alerts_desc">Aviso al terminar una fase de enfoque o de descanso</string>
+    <string name="s3_ch_alarms_name">Alarmas de eventos</string>
+    <string name="s3_ch_alarms_desc">Alarmas a pantalla completa de eventos importantes</string>
+    <string name="s3_ch_achievements_name">Logros</string>
+    <string name="s3_ch_achievements_desc">Avisos al desbloquear un logro</string>
+
+    <!-- TEXTOS PAQUETE 5 (RUTINAS SECUENCIALES E ICONOS) -->
+    <string name="s3_icon">Icono</string>
+    <string name="s3_icon_none">Sin icono</string>
+    <string name="s3_routine_sequential">Modo secuencial</string>
+    <string name="s3_routine_sequential_help">Las tareas se completan en orden: no puedes marcar una hasta terminar la anterior.</string>
+    <string name="s3_seq_locked_suffix"> (en orden)</string>
+
+    <!-- TEXTOS PAQUETE 6 (ALARMA A PANTALLA COMPLETA) -->
+    <string name="s3_alarm_mode">Alarma a pantalla completa</string>
+    <string name="s3_alarm_mode_help">Los recordatorios de este evento sonarán como una alarma que ocupa toda la pantalla.</string>
+    <string name="s3_alarm_dismiss">Descartar</string>
+    <string name="s3_alarm_snooze">Posponer %1$d min</string>
+    <string name="s3_set_alarms">Alarmas</string>
+    <string name="s3_alarm_snooze_label">Tiempo de posposición</string>
+    <string name="s3_alarm_minutes">%1$d min</string>
+    <string name="s3_alarm_fullscreen_perm">Permitir alarmas a pantalla completa</string>
+    <string name="s3_ch_alarm_screen_name">Alarma en pantalla</string>
+    <string name="s3_ch_alarm_screen_desc">Aviso que abre la pantalla de alarma</string>
+</resources>

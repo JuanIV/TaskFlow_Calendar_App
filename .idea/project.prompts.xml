@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PromptTemplates">
+    <option name="builtInPromptOverrides">
+      <list>
+        <BuiltInPromptOverride>
+          <option name="groupId" value="rules" />
+          <option name="promptId" value="project" />
+          <option name="text" value="REGLAS OBLIGATORIAS&#10;1. Haz exactamente lo que dice cada paso. No decidas nada, no mejores, no refactorices, no renombres.&#10;2. &quot;BUSCAR Y REEMPLAZAR&quot; = busca el texto EXACTO indicado (respetando espacios) y sustituyelo. Si el texto no aparece EXACTAMENTE UNA VEZ en el archivo (salvo que el paso diga &quot;todas las apariciones&quot;), DETENTE y avisame indicando archivo y paso. No te saltes nada en silencio.&#10;3. &quot;AÑADIR DEBAJO DE&quot; = inserta el bloque en una linea nueva justo debajo de la linea indicada.&#10;4. &quot;AÑADIR ENCIMA DE&quot; = inserta el bloque en lineas nuevas justo encima de la linea indicada.&#10;5. Las rutas son relativas a app/src/main/java/com/example/taskflow/ salvo que se indique otra cosa.&#10;6. Al terminar todos los pasos: Build &gt; Rebuild Project y ejecuta los tests de la carpeta test. Si hay errores, NO los arregles: copia el texto completo de los errores y detente." />
+        </BuiltInPromptOverride>
+      </list>
+    </option>
+  </component>
+</project>
