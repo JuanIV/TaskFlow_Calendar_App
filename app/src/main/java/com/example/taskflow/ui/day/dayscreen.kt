@@ -110,7 +110,7 @@ fun DayScreen(
                 }
             } else {
                 items(events, key = { "${it.eventId}_${it.originalDate}" }) { event ->
-                    DayEventItem(event = event, onClick = { onEventClick(event.eventId, event.originalDate) })
+                    DayEventItem(event = event, onClick = { if (event.eventId >= 0) onEventClick(event.eventId, event.originalDate) })
                 }
             }
             item {

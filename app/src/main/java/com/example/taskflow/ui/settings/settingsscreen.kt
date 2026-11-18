@@ -214,6 +214,7 @@ fun SettingsScreen(
             AlarmSection()
             LockSection()
             TransferSection()
+            DeviceCalendarsSection()
 
             SectionTitle(stringResource(R.string.s2_set_general))
             OptionDropdown(

@@ -7,6 +7,8 @@ import com.example.taskflow.data.entities.EventExceptionEntity
 import com.example.taskflow.data.entities.EventReminderEntity
 import com.example.taskflow.domain.EventOccurrence
 import com.example.taskflow.domain.expandEvents
+import com.example.taskflow.devicecalendar.ExternalCalendarRepository
+import kotlinx.coroutines.flow.combine
 import com.example.taskflow.scheduling.SchedulingCoordinator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -21,9 +23,12 @@ import javax.inject.Singleton
 class EventRepository @Inject constructor(
     private val eventDao: EventDao,
     private val exceptionDao: EventExceptionDao,
+    private val externalRepo: ExternalCalendarRepository,
     private val coordinator: SchedulingCoordinator
 ) {
-    fun getExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> {
+    fun getExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> =
+        combine(getOwnExpandedEvents(fromEpoch, toEpoch), externalRepo.observe(fromEpoch, toEpoch)) { own, external -> own + external }
+    private fun getOwnExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> {
         val searchFrom = fromEpoch - 365
         return eventDao.getActiveEventsFrom(searchFrom).flatMapLatest { events ->
             val eventIds = events.map { it.id }

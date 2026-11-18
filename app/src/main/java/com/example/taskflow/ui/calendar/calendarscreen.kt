@@ -65,7 +65,7 @@ fun CalendarScreen(
             calendarViewModel = calendarViewModel,
             tasksViewModel = tasksViewModel,
             onAnchorChange = { anchorEpoch = it.toEpochDay() },
-            onNavigateToDetail = onNavigateToDetail,
+            onNavigateToDetail = { id, date -> if (id < 0) onOpenDay(date) else onNavigateToDetail(id, date) },
             onOpenDay = onOpenDay,
             onOpenSettings = onOpenSettings,
             onOpenSearch = onOpenSearch

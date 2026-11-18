@@ -750,4 +750,10 @@
     <string name="s3_sync_up_ok">Copia subida</string>
     <string name="s3_sync_up_fail">No se pudo subir la copia</string>
     <string name="s3_sync_down_fail">No hay una copia válida en la carpeta</string>
+
+    <!-- TEXTOS PAQUETE 11 (CALENDARIOS DEL DISPOSITIVO) -->
+    <string name="s3_set_devcal">Calendarios del dispositivo</string>
+    <string name="s3_devcal_enable">Mostrar calendarios del dispositivo</string>
+    <string name="s3_devcal_hint">Incluye Google Calendar y cualquier calendario sincronizado en el móvil. Son de solo lectura y no se modifican.</string>
+    <string name="s3_devcal_none">No se encontraron calendarios</string>
 </resources>
