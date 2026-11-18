@@ -800,4 +800,9 @@
     <string name="s3_weekly_enable">Avisar con un resumen de la semana</string>
     <string name="s3_weekly_day">Día del resumen</string>
     <string name="s3_weekly_time">Hora del resumen</string>
+
+    <!-- TEXTOS PAQUETE 13 (PLANIFICADOR) -->
+    <string name="s3_planner_title">Planificador semanal</string>
+    <string name="s3_planner_unscheduled">Sin fecha</string>
+    <string name="s3_planner_hint">Mantén pulsada una tarea y arrástrala a otro día.</string>
 </resources>

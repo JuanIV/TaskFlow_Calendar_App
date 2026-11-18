@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SubdirectoryArrowRight
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +48,8 @@ import java.time.format.DateTimeFormatter
 fun TasksScreen(
     viewModel: TasksViewModel = hiltViewModel(),
     onOpenSearch: () -> Unit = {},
-    onOpenFocus: (Long) -> Unit = {}
+    onOpenFocus: (Long) -> Unit = {},
+    onOpenPlanner: () -> Unit = {}
 ) {
     val allTasks by viewModel.allActiveTasks.collectAsState()
     val todayEpoch by viewModel.todayEpoch.collectAsState()
@@ -141,6 +143,9 @@ fun TasksScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_tasks)) },
                 actions = {
+                    IconButton(onClick = onOpenPlanner) {
+                        Icon(Icons.Default.ViewWeek, contentDescription = stringResource(R.string.s3_planner_title))
+                    }
                     IconButton(onClick = { onOpenFocus(-1L) }) {
                         Icon(Icons.Default.Timer, contentDescription = stringResource(R.string.s3_focus_title))
                     }

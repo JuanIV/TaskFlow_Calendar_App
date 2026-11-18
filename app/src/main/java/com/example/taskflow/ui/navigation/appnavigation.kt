@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.taskflow.R
 import com.example.taskflow.ui.calendar.CalendarScreen
+import com.example.taskflow.ui.planner.PlannerScreen
 import com.example.taskflow.ui.achievements.AchievementsScreen
 import com.example.taskflow.ui.day.DayScreen
 import com.example.taskflow.ui.events.EventDetailScreen
@@ -145,6 +146,9 @@ fun AppNavigation(
             composable("achievements") {
                 AchievementsScreen(onBack = { navController.popBackStack() })
             }
+            composable("planner") {
+                PlannerScreen(onBack = { navController.popBackStack() })
+            }
             composable("search") {
                 SearchScreen(
                     onBack = { navController.popBackStack() },
@@ -170,7 +174,8 @@ fun AppNavigation(
             composable(Screen.Tasks.route) {
                 TasksScreen(
                     onOpenSearch = { navController.navigate("search") },
-                    onOpenFocus = { taskId -> navController.navigate("focus?taskId=" + taskId) }
+                    onOpenFocus = { taskId -> navController.navigate("focus?taskId=" + taskId) },
+                    onOpenPlanner = { navController.navigate("planner") }
                 )
             }
             composable(Screen.Routines.route) {
