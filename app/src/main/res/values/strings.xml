@@ -715,4 +715,18 @@
     <string name="s3_onb_p4_text">Usa el temporizador Pomodoro y activa alarmas a pantalla completa para tus eventos importantes.</string>
     <string name="s3_onb_sample">Cargar datos de ejemplo</string>
     <string name="s3_onb_empty">Empezar desde cero</string>
+
+    <!-- TEXTOS PAQUETE 9 (BLOQUEO) -->
+    <string name="s3_set_lock">Bloqueo de la app</string>
+    <string name="s3_lock_enable">Pedir huella o PIN del dispositivo</string>
+    <string name="s3_lock_timeout">Volver a pedirlo tras salir de la app</string>
+    <string name="s3_lock_t0">Al salir</string>
+    <string name="s3_lock_t30">30 segundos</string>
+    <string name="s3_lock_t60">1 minuto</string>
+    <string name="s3_lock_t300">5 minutos</string>
+    <string name="s3_lock_no_secure">Configura un PIN, patrón o huella en los ajustes del móvil para usar esta opción.</string>
+    <string name="s3_lock_title">TaskFlow bloqueada</string>
+    <string name="s3_lock_unlock">Desbloquear</string>
+    <string name="s3_lock_prompt_title">Desbloquear TaskFlow</string>
+    <string name="s3_lock_prompt_desc">Confirma tu identidad</string>
 </resources>

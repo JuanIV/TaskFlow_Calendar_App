@@ -212,6 +212,7 @@ fun SettingsScreen(
 
             AppearanceSection()
             AlarmSection()
+            LockSection()
 
             SectionTitle(stringResource(R.string.s2_set_general))
             OptionDropdown(
