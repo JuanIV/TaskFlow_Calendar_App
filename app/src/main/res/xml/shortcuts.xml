@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="quick_add"
+        android:enabled="true"
+        android:icon="@android:drawable/ic_input_add"
+        android:shortcutShortLabel="@string/s3_shortcut_add_short"
+        android:shortcutLongLabel="@string/s3_shortcut_add_long">
+        <intent
+            android:action="com.example.taskflow.ACTION_QUICK_ADD"
+            android:targetPackage="com.example.taskflow"
+            android:targetClass="com.example.taskflow.mainactivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="open_focus"
+        android:enabled="true"
+        android:icon="@android:drawable/ic_media_play"
+        android:shortcutShortLabel="@string/s3_shortcut_focus_short"
+        android:shortcutLongLabel="@string/s3_shortcut_focus_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.taskflow"
+            android:targetClass="com.example.taskflow.mainactivity">
+            <extra android:name="OPEN_ROUTE" android:value="focus" />
+        </intent>
+    </shortcut>
+</shortcuts>

@@ -691,4 +691,14 @@
     <string name="s3_alarm_fullscreen_perm">Permitir alarmas a pantalla completa</string>
     <string name="s3_ch_alarm_screen_name">Alarma en pantalla</string>
     <string name="s3_ch_alarm_screen_desc">Aviso que abre la pantalla de alarma</string>
+
+    <!-- TEXTOS PAQUETE 7 (CAPTURA RAPIDA) -->
+    <string name="s3_capture_title">Captura rápida</string>
+    <string name="s3_capture_hint">Escribe una tarea</string>
+    <string name="s3_capture_saved">Tarea guardada</string>
+    <string name="s3_tile_label">Nueva tarea</string>
+    <string name="s3_shortcut_add_short">Nueva tarea</string>
+    <string name="s3_shortcut_add_long">Añadir una tarea rápida</string>
+    <string name="s3_shortcut_focus_short">Enfoque</string>
+    <string name="s3_shortcut_focus_long">Abrir el modo enfoque</string>
 </resources>

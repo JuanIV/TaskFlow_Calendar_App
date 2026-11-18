@@ -9,7 +9,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.taskflow.capture.CaptureContract
 import com.example.taskflow.scheduling.AlarmContract
+import com.example.taskflow.ui.capture.QuickCaptureDialog
 import com.example.taskflow.ui.navigation.AppNavigation
 import com.example.taskflow.ui.permissions.PermissionsDialog
 import com.example.taskflow.ui.theme.TaskFlowTheme
@@ -21,11 +23,25 @@ class mainactivity : ComponentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
     private var pendingRoute by mutableStateOf<String?>(null)
+    private var quickCaptureText by mutableStateOf<String?>(null)
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                if (intent.type == "text/plain") {
+                    quickCaptureText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+                }
+            }
+            CaptureContract.ACTION_QUICK_ADD -> quickCaptureText = ""
+            else -> pendingRoute = intent.getStringExtra(AlarmContract.EXTRA_OPEN_ROUTE)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
-            pendingRoute = intent?.getStringExtra(AlarmContract.EXTRA_OPEN_ROUTE)
+            handleIntent(intent)
         }
         setContent {
             val themeMode by themeViewModel.themeMode.collectAsState()
@@ -37,6 +53,10 @@ class mainactivity : ComponentActivity() {
                     pendingRoute = pendingRoute,
                     onRouteHandled = { pendingRoute = null }
                 )
+                val captured = quickCaptureText
+                if (captured != null) {
+                    QuickCaptureDialog(initialText = captured, onDismiss = { quickCaptureText = null })
+                }
             }
         }
     }
@@ -44,6 +64,6 @@ class mainactivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        pendingRoute = intent.getStringExtra(AlarmContract.EXTRA_OPEN_ROUTE)
+        handleIntent(intent)
     }
 }
