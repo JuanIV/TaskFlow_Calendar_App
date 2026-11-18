@@ -729,4 +729,25 @@
     <string name="s3_lock_unlock">Desbloquear</string>
     <string name="s3_lock_prompt_title">Desbloquear TaskFlow</string>
     <string name="s3_lock_prompt_desc">Confirma tu identidad</string>
+
+    <!-- TEXTOS PAQUETE 10 (IMPORTAR/EXPORTAR) -->
+    <string name="s3_set_transfer">Importar y exportar</string>
+    <string name="s3_ics_export">Exportar eventos (.ics)</string>
+    <string name="s3_ics_import">Importar eventos (.ics)</string>
+    <string name="s3_csv_tasks">Exportar tareas (CSV)</string>
+    <string name="s3_csv_events">Exportar eventos (CSV)</string>
+    <string name="s3_export_ok">Archivo guardado</string>
+    <string name="s3_export_fail">No se pudo guardar el archivo</string>
+    <string name="s3_import_result">Eventos importados: %1$d</string>
+    <string name="s3_import_fail">No se pudo leer el archivo</string>
+    <string name="s3_ics_note">Al exportar a .ics se incluyen las ocurrencias borradas de eventos repetidos, pero no las editadas una a una. Los CSV usan punto y coma como separador, para abrirlos bien en Excel en español.</string>
+    <string name="s3_set_sync">Sincronización por carpeta</string>
+    <string name="s3_sync_help">Es una copia manual: Subir sustituye el archivo de la carpeta por una copia completa de tus datos, y Bajar sustituye tus datos por los de la carpeta. No se fusionan cambios, así que usa siempre el mismo sentido: sube desde el móvil que acabas de usar y baja en el otro.</string>
+    <string name="s3_sync_folder_none">Ninguna carpeta elegida</string>
+    <string name="s3_sync_folder_pick">Elegir carpeta</string>
+    <string name="s3_sync_upload">Subir copia a la carpeta</string>
+    <string name="s3_sync_download">Bajar copia de la carpeta</string>
+    <string name="s3_sync_up_ok">Copia subida</string>
+    <string name="s3_sync_up_fail">No se pudo subir la copia</string>
+    <string name="s3_sync_down_fail">No hay una copia válida en la carpeta</string>
 </resources>
