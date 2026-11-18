@@ -11,6 +11,7 @@ object AlarmContract {
     const val ACTION_SUMMARY_MORNING = "com.example.taskflow.ACTION_SUMMARY_MORNING"
     const val ACTION_SUMMARY_EVENING = "com.example.taskflow.ACTION_SUMMARY_EVENING"
     const val ACTION_LOOSE_REMINDER = "com.example.taskflow.ACTION_LOOSE_REMINDER"
+    const val ACTION_SUMMARY_WEEKLY = "com.example.taskflow.ACTION_SUMMARY_WEEKLY"
 
     const val ACTION_FOCUS_END = "com.example.taskflow.ACTION_FOCUS_END"
     const val EXTRA_EVENT_ID = "EXTRA_EVENT_ID"

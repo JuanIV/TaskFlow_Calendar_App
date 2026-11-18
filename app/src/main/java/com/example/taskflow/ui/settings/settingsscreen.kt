@@ -215,6 +215,7 @@ fun SettingsScreen(
             LockSection()
             TransferSection()
             DeviceCalendarsSection()
+            WeeklySummarySection()
 
             SectionTitle(stringResource(R.string.s2_set_general))
             OptionDropdown(

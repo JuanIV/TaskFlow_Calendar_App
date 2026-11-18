@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +23,8 @@ import com.example.taskflow.R
 @Composable
 fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
-    onNavigateToDetail: (Long) -> Unit = {}
+    onNavigateToDetail: (Long) -> Unit = {},
+    onOpenAchievements: () -> Unit = {}
 ) {
     val cards by viewModel.cards.collectAsState()
     val context = LocalContext.current
@@ -36,6 +38,9 @@ fun StatsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_stats)) },
                 actions = {
+                    IconButton(onClick = onOpenAchievements) {
+                        Icon(Icons.Default.EmojiEvents, contentDescription = stringResource(R.string.s3_ach_title))
+                    }
                     if (debuggable) {
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {

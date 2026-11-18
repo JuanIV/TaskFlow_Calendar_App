@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.taskflow.R
 import com.example.taskflow.ui.calendar.CalendarScreen
+import com.example.taskflow.ui.achievements.AchievementsScreen
 import com.example.taskflow.ui.day.DayScreen
 import com.example.taskflow.ui.events.EventDetailScreen
 import com.example.taskflow.ui.focus.FocusScreen
@@ -130,13 +131,19 @@ fun AppNavigation(
                 TemplatesScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Statistics.route) {
-                StatsScreen(onNavigateToDetail = { id -> navController.navigate("statistics_detail/$id") })
+                StatsScreen(
+                    onNavigateToDetail = { id -> navController.navigate("statistics_detail/$id") },
+                    onOpenAchievements = { navController.navigate("achievements") }
+                )
             }
             composable(
                 route = "statistics_detail/{routineId}",
                 arguments = listOf(navArgument("routineId") { type = NavType.LongType })
             ) {
                 StatsDetailScreen(onBack = { navController.popBackStack() })
+            }
+            composable("achievements") {
+                AchievementsScreen(onBack = { navController.popBackStack() })
             }
             composable("search") {
                 SearchScreen(

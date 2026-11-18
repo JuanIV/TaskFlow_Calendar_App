@@ -8,6 +8,7 @@ import com.example.taskflow.domain.DayCloser
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.focus.FocusManager
 import com.example.taskflow.notifications.NotificationRefresher
+import com.example.taskflow.notifications.WeeklySummaryNotifier
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var dayCloser: DayCloser
     @Inject lateinit var settingsRepo: SettingsRepository
     @Inject lateinit var focusManager: FocusManager
+    @Inject lateinit var weeklyNotifier: WeeklySummaryNotifier
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -64,6 +66,10 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                     AlarmContract.ACTION_SUMMARY_EVENING -> {
                         refresher.showSummary(false)
+                        coordinator.rescheduleAll()
+                    }
+                    AlarmContract.ACTION_SUMMARY_WEEKLY -> {
+                        weeklyNotifier.show()
                         coordinator.rescheduleAll()
                     }
                     AlarmContract.ACTION_FOCUS_END -> {

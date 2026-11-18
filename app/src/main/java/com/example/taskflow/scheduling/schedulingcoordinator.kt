@@ -8,9 +8,11 @@ import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.daos.TaskReminderDao
 import com.example.taskflow.data.entities.RoutineEntity
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.achievements.AchievementManager
 import com.example.taskflow.domain.getLogicalInstant
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.nextLooseReminderTrigger
+import com.example.taskflow.domain.nextWeeklyTrigger
 import com.example.taskflow.domain.nextReminderOccurrence
 import com.example.taskflow.domain.routineAppliesOn
 import com.example.taskflow.notifications.NotificationRefresher
@@ -45,7 +47,8 @@ class SchedulingCoordinatorImpl @Inject constructor(
     private val settingsRepo: SettingsRepository,
     private val alarmScheduler: AlarmScheduler,
     private val notificationRefresher: NotificationRefresher,
-    private val widgetUpdater: WidgetUpdater
+    private val widgetUpdater: WidgetUpdater,
+    private val achievementManager: AchievementManager
 ) : SchedulingCoordinator {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -61,6 +64,7 @@ class SchedulingCoordinatorImpl @Inject constructor(
     override suspend fun refreshNotifications(): Unit = mutex.withLock {
         notificationRefresher.refreshAll()
         widgetUpdater.updateAll()
+        achievementManager.check()
     }
 
     private fun nextDailyInstant(todayEpoch: Long, dayStart: Int, minute: Int, nowMs: Long): Long {
@@ -110,6 +114,12 @@ class SchedulingCoordinatorImpl @Inject constructor(
             )
         }
 
+        if (settingsRepo.weeklyEnabledFlow.first()) {
+            desired["sum_weekly"] = PlannedAlarm(
+                AlarmContract.ACTION_SUMMARY_WEEKLY, Bundle(),
+                nextWeeklyTrigger(nowMs, settingsRepo.weeklyDayFlow.first(), settingsRepo.weeklyMinuteFlow.first(), zone)
+            )
+        }
         for (routine in routineDao.getActiveRoutinesSync()) {
             val extras = Bundle().apply { putLong(AlarmContract.EXTRA_ROUTINE_ID, routine.id) }
             firstFuture(routine, todayEpoch, nowMs) { day -> getLogicalInstant(day, dayStart, routine.startMinuteOfDay) }
