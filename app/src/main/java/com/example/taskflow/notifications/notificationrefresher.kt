@@ -163,7 +163,7 @@ class NotificationRefresher @Inject constructor(
         }
 
         val builder = NotificationCompat.Builder(context, NotificationChannels.PERSISTENT_TASKS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setCustomContentView(collapsed)
             .setCustomBigContentView(expanded)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
@@ -178,7 +178,7 @@ class NotificationRefresher @Inject constructor(
 
     private fun showAllDone(remainingMs: Long) {
         val builder = NotificationCompat.Builder(context, NotificationChannels.PERSISTENT_TASKS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(context.getString(R.string.s2_all_done_title))
             .setContentText(context.getString(R.string.s2_all_done_text))
             .setContentIntent(openIntent(NotificationIds.TODAY_TASKS, "tasks"))
@@ -249,7 +249,7 @@ class NotificationRefresher @Inject constructor(
         }
 
         val builder = NotificationCompat.Builder(context, NotificationChannels.PERSISTENT_ROUTINES)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setCustomContentView(collapsed)
             .setCustomBigContentView(expanded)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
@@ -289,7 +289,7 @@ class NotificationRefresher @Inject constructor(
             return
         }
         val builder = NotificationCompat.Builder(context, NotificationChannels.EVENT_REMINDERS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(occ.title)
             .setContentText(timeText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -309,7 +309,7 @@ class NotificationRefresher @Inject constructor(
         }
         val pending = PendingIntent.getActivity(context, notificationId, intent, flags())
         val builder = NotificationCompat.Builder(context, NotificationChannels.ALARM_SCREEN)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setContentText(timeText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -325,7 +325,7 @@ class NotificationRefresher @Inject constructor(
         if (task.deletedAt != null || task.isCompleted) return
         val id = NotificationIds.taskReminder(taskId)
         val builder = NotificationCompat.Builder(context, NotificationChannels.TASK_REMINDERS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(task.title)
             .setContentText(context.getString(R.string.s2_task_reminder_text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -357,7 +357,7 @@ class NotificationRefresher @Inject constructor(
         if (pending == 0) return
 
         val builder = NotificationCompat.Builder(context, NotificationChannels.ROUTINE_ALERTS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(context.getString(R.string.s2_routine_end_title))
             .setContentText(context.getString(R.string.s2_routine_end_text, routine.name, warn, pending))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -379,7 +379,7 @@ class NotificationRefresher @Inject constructor(
         if (loose.size > MAX_ROWS) style.addLine(context.getString(R.string.s2_and_n_more, loose.size - MAX_ROWS))
 
         val builder = NotificationCompat.Builder(context, NotificationChannels.LOOSE_TASKS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setContentText(loose.first().title)
             .setStyle(style)
@@ -442,7 +442,7 @@ class NotificationRefresher @Inject constructor(
         lines.forEach { style.addLine(it) }
         val id = if (isMorning) NotificationIds.SUMMARY_MORNING else NotificationIds.SUMMARY_EVENING
         val builder = NotificationCompat.Builder(context, NotificationChannels.SUMMARIES)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setContentText(lines.first())
             .setStyle(style)

@@ -157,7 +157,7 @@ class FocusManager @Inject constructor(
         val title = if (taskName != null) label + " - " + taskName else label
         val cycles = cfg.cycles.coerceAtLeast(1)
         val builder = NotificationCompat.Builder(context, NotificationChannels.FOCUS_RUNNING)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -176,7 +176,7 @@ class FocusManager @Inject constructor(
 
     private fun alert(title: String, text: String) {
         val notification = NotificationCompat.Builder(context, NotificationChannels.FOCUS_ALERTS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

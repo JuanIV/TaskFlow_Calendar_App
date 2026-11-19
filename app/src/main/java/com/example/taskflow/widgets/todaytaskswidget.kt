@@ -16,6 +16,7 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -79,7 +80,7 @@ class TodayTasksWidget : GlanceAppWidget() {
         val openIntent = widgetOpenIntent(context, "tasks")
         provideContent {
             GlanceTheme {
-                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).padding(8.dp)) {
+                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp).padding(8.dp)) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth().clickable(actionStartActivity(openIntent)).padding(bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically

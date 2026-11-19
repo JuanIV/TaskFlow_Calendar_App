@@ -72,7 +72,7 @@ class WeeklySummaryNotifier @Inject constructor(
         }
         val pending = PendingIntent.getActivity(context, 5002, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(context, NotificationChannels.SUMMARIES)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(context.getString(R.string.s3_weekly_title))
             .setContentText(lines.first())
             .setStyle(style)

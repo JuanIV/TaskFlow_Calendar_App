@@ -17,6 +17,7 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -97,7 +98,7 @@ class AgendaWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).padding(8.dp)) {
+                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp).padding(8.dp)) {
                     if (rows.isEmpty()) {
                         Text(
                             text = emptyText,

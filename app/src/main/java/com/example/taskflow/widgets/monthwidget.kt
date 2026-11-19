@@ -13,6 +13,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -99,7 +100,7 @@ class MonthWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).padding(6.dp)) {
+                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp).padding(6.dp)) {
                     Text(
                         text = data.title,
                         style = TextStyle(color = GlanceTheme.colors.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp),

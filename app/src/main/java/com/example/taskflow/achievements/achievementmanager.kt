@@ -86,7 +86,7 @@ class AchievementManager @Inject constructor(
         }
         val pending = PendingIntent.getActivity(context, 5001, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(context, NotificationChannels.ACHIEVEMENTS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_taskflow)
             .setContentTitle(title)
             .setContentText(text)
             .setAutoCancel(true)
