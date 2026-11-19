@@ -17,6 +17,7 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -28,11 +29,13 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.example.taskflow.R
+import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.domain.expandEvents
 import com.example.taskflow.domain.formatMinute
 import com.example.taskflow.domain.isVisibleIn
@@ -47,17 +50,21 @@ private data class AgendaHeader(val text: String) : AgendaRow
 private data class AgendaEventRow(val text: String, val colorArgb: Int, val route: String) : AgendaRow
 private data class AgendaTaskRow(val id: Long, val title: String, val completed: Boolean) : AgendaRow
 
-private suspend fun loadAgenda(context: Context): List<AgendaRow> {
+private suspend fun loadAgenda(context: Context, days: Int, includeTasks: Boolean): List<AgendaRow> {
     val entry = widgetEntryPoint(context)
     val today = logicalDateNow(entry.settingsRepo().getDayStartHourSync())
-    val last = today + 6
+    val last = today + (days.coerceIn(1, 31) - 1)
 
     val events = entry.eventDao().getActiveEventsFromSync(today - 365)
     val exceptions = if (events.isEmpty()) emptyList() else entry.exceptionDao().getExceptionsForEvents(events.map { it.id })
     val byDay = groupByDay(expandEvents(events, exceptions, today, last).filter { it.isVisibleIn("AGENDA") })
-    val tasksByDay = entry.taskDao().getTasksUpToDateSync(last)
-        .filter { val d = it.date; d != null && d >= today }
-        .groupBy { it.date ?: 0L }
+    val tasksByDay: Map<Long, List<TaskEntity>> = if (includeTasks) {
+        entry.taskDao().getTasksUpToDateSync(last)
+            .filter { val d = it.date; d != null && d >= today }
+            .groupBy { it.date ?: 0L }
+    } else {
+        emptyMap()
+    }
 
     val format = DateTimeFormatter.ofPattern("EEEE d MMM", Locale("es", "ES"))
     val rows = mutableListOf<AgendaRow>()
@@ -78,8 +85,12 @@ private suspend fun loadAgenda(context: Context): List<AgendaRow> {
 }
 
 class AgendaWidget : GlanceAppWidget() {
+
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val rows = loadAgenda(context)
+        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
+        val rows = loadAgenda(context, prefs[WidgetPrefs.AGENDA_DAYS] ?: 7, prefs[WidgetPrefs.AGENDA_TASKS] ?: true)
         val emptyText = context.getString(R.string.s2_widget_nothing)
         val calendarIntent = widgetOpenIntent(context, "calendar")
         val intents = rows.filterIsInstance<AgendaEventRow>().associate { it.route to widgetOpenIntent(context, it.route) }

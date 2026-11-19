@@ -99,5 +99,61 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <activity
+            android:name=".widgets.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TaskFlow">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widgets.RoutinesWidgetReceiver"
+            android:exported="true"
+            android:label="@string/s3_widget_routines_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/routineswidget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.StreakWidgetReceiver"
+            android:exported="true"
+            android:label="@string/s3_widget_streak_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/streakwidget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.FocusWidgetReceiver"
+            android:exported="true"
+            android:label="@string/s3_widget_focus_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focuswidget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.MonthWidgetReceiver"
+            android:exported="true"
+            android:label="@string/s3_widget_month_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/monthwidget_info" />
+        </receiver>
     </application>
 </manifest>

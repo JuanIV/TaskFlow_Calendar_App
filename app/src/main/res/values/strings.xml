@@ -805,4 +805,38 @@
     <string name="s3_planner_title">Planificador semanal</string>
     <string name="s3_planner_unscheduled">Sin fecha</string>
     <string name="s3_planner_hint">Mantén pulsada una tarea y arrástrala a otro día.</string>
+
+    <!-- TEXTOS PAQUETE 14A (WIDGETS) -->
+    <string name="s3_widget_routines_label">Rutinas de hoy</string>
+    <string name="s3_widget_routines_desc">Progreso de tus rutinas de hoy</string>
+    <string name="s3_widget_routines_none">No hay rutinas para hoy</string>
+    <string name="s3_widget_progress">%1$d/%2$d</string>
+    <string name="s3_wcfg_title">Configurar widget</string>
+    <string name="s3_wcfg_save">Guardar</string>
+    <string name="s3_wcfg_today_done">Mostrar tareas completadas</string>
+    <string name="s3_wcfg_today_overdue">Mostrar tareas atrasadas</string>
+    <string name="s3_wcfg_max">Máximo de tareas</string>
+    <string name="s3_wcfg_days">Días a mostrar</string>
+    <string name="s3_wcfg_agenda_tasks">Incluir tareas en la agenda</string>
+    <string name="s3_wcfg_only_pending">Solo rutinas pendientes</string>
+    <string name="s3_wcfg_number">%1$d</string>
+
+    <!-- TEXTOS PAQUETE 14B (WIDGETS) -->
+    <string name="s3_widget_streak_label">Racha</string>
+    <string name="s3_widget_streak_desc">Tu racha actual de días completados</string>
+    <string name="s3_widget_streak_days">%1$d días</string>
+    <string name="s3_widget_streak_title">Racha global</string>
+    <string name="s3_widget_streak_best">Mejor: %1$d</string>
+    <string name="s3_widget_focus_label">Enfoque</string>
+    <string name="s3_widget_focus_desc">Tiempo de enfoque de hoy y acceso rápido</string>
+    <string name="s3_widget_focus_today">Hoy: %1$s</string>
+    <string name="s3_widget_focus_total">Total: %1$s</string>
+    <string name="s3_widget_focus_until">Hasta las %1$s</string>
+    <string name="s3_widget_focus_idle">Toca para empezar</string>
+    <string name="s3_widget_month_label">Calendario del mes</string>
+    <string name="s3_widget_month_desc">El mes actual con tus días marcados</string>
+    <string name="s3_wcfg_streak_best">Mostrar la mejor racha</string>
+    <string name="s3_wcfg_focus_total">Mostrar el tiempo total</string>
+    <string name="s3_wcfg_month_events">Marcar días con eventos</string>
+    <string name="s3_wcfg_month_tasks">Marcar días con tareas pendientes</string>
 </resources>

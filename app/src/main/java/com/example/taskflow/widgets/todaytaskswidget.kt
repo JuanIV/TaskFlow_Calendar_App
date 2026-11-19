@@ -16,6 +16,7 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -23,6 +24,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextDecoration
@@ -38,16 +40,18 @@ import java.util.Locale
 private data class TodayRow(val id: Long, val label: String, val completed: Boolean)
 private data class TodayData(val header: String, val pending: Int, val rows: List<TodayRow>)
 
-private suspend fun loadTodayData(context: Context): TodayData {
+private suspend fun loadTodayData(context: Context, showDone: Boolean, showOverdue: Boolean, maxRows: Int): TodayData {
     val entry = widgetEntryPoint(context)
     val today = logicalDateNow(entry.settingsRepo().getDayStartHourSync())
     val overdueMode = entry.settingsRepo().overdueModeFlow.first()
     val visible = entry.taskDao().getTasksUpToDateSync(today).filter { task ->
         val d = task.date
-        d == today || (overdueMode == "SHOW" && d != null && d < today && !task.isCompleted)
+        val isToday = d == today
+        val isOverdue = overdueMode == "SHOW" && showOverdue && d != null && d < today && !task.isCompleted
+        (isToday || isOverdue) && (showDone || !task.isCompleted)
     }.sortedWith(compareBy<TaskEntity> { it.isCompleted }.thenByDescending { it.priority }.thenBy { it.sortOrder })
 
-    val rows = visible.map { task ->
+    val rows = visible.take(maxRows).map { task ->
         val subs = entry.taskDao().getSubtasksForTaskSync(task.id)
         val counter = if (subs.isNotEmpty()) " (" + subs.count { it.isCompleted } + "/" + subs.size + ")" else ""
         val d = task.date
@@ -60,8 +64,17 @@ private suspend fun loadTodayData(context: Context): TodayData {
 }
 
 class TodayTasksWidget : GlanceAppWidget() {
+
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadTodayData(context)
+        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
+        val data = loadTodayData(
+            context,
+            prefs[WidgetPrefs.TODAY_SHOW_DONE] ?: true,
+            prefs[WidgetPrefs.TODAY_SHOW_OVERDUE] ?: true,
+            prefs[WidgetPrefs.TODAY_MAX] ?: 20
+        )
         val emptyText = context.getString(R.string.s2_widget_no_tasks)
         val openIntent = widgetOpenIntent(context, "tasks")
         provideContent {

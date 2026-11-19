@@ -20,5 +20,21 @@ class WidgetUpdater @Inject constructor(
             AgendaWidget().updateAll(context)
         } catch (e: Exception) {
         }
+        try {
+            RoutinesWidget().updateAll(context)
+        } catch (e: Exception) {
+        }
+        try {
+            StreakWidget().updateAll(context)
+        } catch (e: Exception) {
+        }
+        try {
+            FocusWidget().updateAll(context)
+        } catch (e: Exception) {
+        }
+        try {
+            MonthWidget().updateAll(context)
+        } catch (e: Exception) {
+        }
     }
 }
