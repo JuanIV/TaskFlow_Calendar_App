@@ -1,9 +1,16 @@
 package com.example.taskflow.widgets
 
 import android.content.Context
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -14,12 +21,13 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -50,8 +58,9 @@ private sealed interface AgendaRow
 private data class AgendaHeader(val text: String) : AgendaRow
 private data class AgendaEventRow(val text: String, val colorArgb: Int, val route: String) : AgendaRow
 private data class AgendaTaskRow(val id: Long, val title: String, val completed: Boolean) : AgendaRow
+private data class AgendaData(val rows: List<AgendaRow>, val today: Long)
 
-private suspend fun loadAgenda(context: Context, days: Int, includeTasks: Boolean): List<AgendaRow> {
+private suspend fun loadAgenda(context: Context, days: Int, includeTasks: Boolean): AgendaData {
     val entry = widgetEntryPoint(context)
     val today = logicalDateNow(entry.settingsRepo().getDayStartHourSync())
     val last = today + (days.coerceIn(1, 31) - 1)
@@ -82,7 +91,7 @@ private suspend fun loadAgenda(context: Context, days: Int, includeTasks: Boolea
         }
         for (task in dayTasks) rows.add(AgendaTaskRow(task.id, task.title, task.isCompleted))
     }
-    return rows
+    return AgendaData(rows, today)
 }
 
 class AgendaWidget : GlanceAppWidget() {
@@ -90,24 +99,43 @@ class AgendaWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
-        val rows = loadAgenda(context, prefs[WidgetPrefs.AGENDA_DAYS] ?: 7, prefs[WidgetPrefs.AGENDA_TASKS] ?: true)
+        val entry = widgetEntryPoint(context)
+        val p0 = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
+        val initial = loadAgenda(context, p0[WidgetPrefs.AGENDA_DAYS] ?: 7, p0[WidgetPrefs.AGENDA_TASKS] ?: true)
         val emptyText = context.getString(R.string.s2_widget_nothing)
+        val title = context.getString(R.string.s2_view_agenda)
         val calendarIntent = widgetOpenIntent(context, "calendar")
-        val intents = rows.filterIsInstance<AgendaEventRow>().associate { it.route to widgetOpenIntent(context, it.route) }
 
         provideContent {
+            val prefs = currentState<Preferences>()
+            val days = prefs[WidgetPrefs.AGENDA_DAYS] ?: 7
+            val includeTasks = prefs[WidgetPrefs.AGENDA_TASKS] ?: true
+            val tick = prefs[WidgetPrefs.REFRESH_TICK] ?: 0
+            val tasksTrigger by entry.taskDao().getAllActiveTasks().collectAsState(initial = emptyList())
+            val eventsTrigger by entry.eventDao().getActiveEventsFrom(0L).collectAsState(initial = emptyList())
+            var data by remember { mutableStateOf(initial) }
+            LaunchedEffect(days, includeTasks, tick, tasksTrigger, eventsTrigger) {
+                data = loadAgenda(context, days, includeTasks)
+            }
+
             GlanceTheme {
-                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp).padding(8.dp)) {
-                    if (rows.isEmpty()) {
+                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp)) {
+                    WidgetHeader(
+                        title = title,
+                        buttons = listOf(
+                            HeaderButton(R.drawable.ic_widget_refresh, actionRunCallback<RefreshWidgetCallback>()),
+                            HeaderButton(R.drawable.ic_widget_add, actionStartActivity(widgetQuickAddIntent(context, data.today)))
+                        )
+                    )
+                    if (data.rows.isEmpty()) {
                         Text(
                             text = emptyText,
                             style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 13.sp),
-                            modifier = GlanceModifier.clickable(actionStartActivity(calendarIntent))
+                            modifier = GlanceModifier.fillMaxWidth().padding(12.dp).clickable(actionStartActivity(calendarIntent))
                         )
                     } else {
-                        LazyColumn {
-                            items(rows) { row ->
+                        LazyColumn(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                            items(data.rows) { row ->
                                 when (row) {
                                     is AgendaHeader -> Text(
                                         text = row.text,
@@ -116,7 +144,7 @@ class AgendaWidget : GlanceAppWidget() {
                                     )
                                     is AgendaEventRow -> Row(
                                         modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp).clickable(
-                                            actionStartActivity(intents.getValue(row.route))
+                                            actionStartActivity(widgetOpenIntent(context, row.route))
                                         ),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {

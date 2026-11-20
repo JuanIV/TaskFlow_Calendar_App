@@ -837,6 +837,10 @@
     <string name="s3_widget_month_desc">El mes actual con tus días marcados</string>
     <string name="s3_wcfg_streak_best">Mostrar la mejor racha</string>
     <string name="s3_wcfg_focus_total">Mostrar el tiempo total</string>
-    <string name="s3_wcfg_month_events">Marcar días con eventos</string>
-    <string name="s3_wcfg_month_tasks">Marcar días con tareas pendientes</string>
+    <string name="s3_wcfg_month_events">Mostrar eventos en cada día</string>
+    <string name="s3_wcfg_month_tasks">Mostrar tareas en cada día</string>
+    <string name="s4_widget_week_label">Semana</string>
+    <string name="s4_widget_week_desc">Semana con los eventos y tareas de cada día</string>
+    <string name="s4_widget_week_title">%1$s · Sem. %2$d</string>
+    <string name="s4_widget_week_empty">Nada planificado este día</string>
 </resources>

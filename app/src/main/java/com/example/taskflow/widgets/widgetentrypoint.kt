@@ -29,6 +29,7 @@ interface WidgetEntryPoint {
     fun settingsRepo(): SettingsRepository
     fun coordinator(): SchedulingCoordinator
     fun completion(): TaskCompletionHelper
+    fun widgetUpdater(): WidgetUpdater
 }
 
 fun widgetEntryPoint(context: Context): WidgetEntryPoint =

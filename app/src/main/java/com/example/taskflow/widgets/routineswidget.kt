@@ -1,22 +1,31 @@
 package com.example.taskflow.widgets
 
 import android.content.Context
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -62,30 +71,42 @@ class RoutinesWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
-        val rows = loadRoutines(context, prefs[WidgetPrefs.ROUTINES_ONLY_PENDING] ?: false)
+        val entry = widgetEntryPoint(context)
+        val p0 = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
+        val initial = loadRoutines(context, p0[WidgetPrefs.ROUTINES_ONLY_PENDING] ?: false)
         val title = context.getString(R.string.s3_widget_routines_label)
         val emptyText = context.getString(R.string.s3_widget_routines_none)
-        val listIntent = widgetOpenIntent(context, "routines")
-        val intents = rows.associate { it.id to widgetOpenIntent(context, "routine_detail/" + it.id) }
 
         provideContent {
+            val prefs = currentState<Preferences>()
+            val onlyPending = prefs[WidgetPrefs.ROUTINES_ONLY_PENDING] ?: false
+            val tick = prefs[WidgetPrefs.REFRESH_TICK] ?: 0
+            val completionsTrigger by entry.routineDao().observeAllCompletions().collectAsState(initial = emptyList())
+            val routinesTrigger by entry.routineDao().getAllRoutines().collectAsState(initial = emptyList())
+            var rows by remember { mutableStateOf(initial) }
+            LaunchedEffect(onlyPending, tick, completionsTrigger, routinesTrigger) {
+                rows = loadRoutines(context, onlyPending)
+            }
+
             GlanceTheme {
-                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp).padding(8.dp)) {
-                    Text(
-                        text = title,
-                        style = TextStyle(color = GlanceTheme.colors.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                        modifier = GlanceModifier.fillMaxWidth().clickable(actionStartActivity(listIntent)).padding(bottom = 4.dp)
+                Column(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.background).cornerRadius(20.dp)) {
+                    WidgetHeader(
+                        title = title,
+                        buttons = listOf(HeaderButton(R.drawable.ic_widget_refresh, actionRunCallback<RefreshWidgetCallback>()))
                     )
                     if (rows.isEmpty()) {
-                        Text(text = emptyText, style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 13.sp))
+                        Text(
+                            text = emptyText,
+                            style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 13.sp),
+                            modifier = GlanceModifier.fillMaxWidth().padding(12.dp)
+                        )
                     } else {
-                        LazyColumn {
+                        LazyColumn(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
                             items(rows) { row ->
                                 val finished = row.done >= row.required
                                 Row(
                                     modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp).clickable(
-                                        actionStartActivity(intents.getValue(row.id))
+                                        actionStartActivity(widgetOpenIntent(context, "routine_detail/" + row.id))
                                     ),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {

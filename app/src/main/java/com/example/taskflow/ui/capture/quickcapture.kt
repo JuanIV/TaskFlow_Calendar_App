@@ -30,13 +30,13 @@ class QuickCaptureViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Primera linea = titulo. El resto, si lo hay, va a las notas. La tarea queda sin fecha.
-    fun add(raw: String) {
+    fun add(raw: String, date: Long?) {
         val lines = raw.trim().lines()
         val title = lines.first().trim().take(200)
         if (title.isEmpty()) return
         val notes = lines.drop(1).joinToString("\n").trim().takeIf { it.isNotEmpty() }
         viewModelScope.launch {
-            repository.saveTask(TaskEntity(title = title, createdAt = System.currentTimeMillis(), notes = notes))
+            repository.saveTask(TaskEntity(title = title, date = date, createdAt = System.currentTimeMillis(), notes = notes))
         }
     }
 }
@@ -44,6 +44,7 @@ class QuickCaptureViewModel @Inject constructor(
 @Composable
 fun QuickCaptureDialog(
     initialText: String,
+    date: Long? = null,
     onDismiss: () -> Unit,
     viewModel: QuickCaptureViewModel = hiltViewModel()
 ) {
@@ -67,7 +68,7 @@ fun QuickCaptureDialog(
             TextButton(
                 enabled = text.isNotBlank(),
                 onClick = {
-                    viewModel.add(text)
+                    viewModel.add(text, date)
                     Toast.makeText(context, savedMsg, Toast.LENGTH_SHORT).show()
                     onDismiss()
                 }

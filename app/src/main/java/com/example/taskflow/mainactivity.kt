@@ -32,6 +32,7 @@ class mainactivity : ComponentActivity() {
     private val onboardingViewModel: OnboardingViewModel by viewModels()
     private var pendingRoute by mutableStateOf<String?>(null)
     private var quickCaptureText by mutableStateOf<String?>(null)
+    private var quickCaptureDate by mutableStateOf<Long?>(null)
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
@@ -39,9 +40,14 @@ class mainactivity : ComponentActivity() {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
                     quickCaptureText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
+                    quickCaptureDate = null
                 }
             }
-            CaptureContract.ACTION_QUICK_ADD -> quickCaptureText = ""
+            CaptureContract.ACTION_QUICK_ADD -> {
+                quickCaptureText = ""
+                val d = intent.getLongExtra(CaptureContract.EXTRA_QUICK_DATE, -1L)
+                quickCaptureDate = if (d >= 0L) d else null
+            }
             else -> pendingRoute = intent.getStringExtra(AlarmContract.EXTRA_OPEN_ROUTE)
         }
     }
@@ -71,7 +77,11 @@ class mainactivity : ComponentActivity() {
                         )
                         val captured = quickCaptureText
                         if (captured != null) {
-                            QuickCaptureDialog(initialText = captured, onDismiss = { quickCaptureText = null })
+                            QuickCaptureDialog(
+                                initialText = captured,
+                                date = quickCaptureDate,
+                                onDismiss = { quickCaptureText = null; quickCaptureDate = null }
+                            )
                         }
                     }
                 }

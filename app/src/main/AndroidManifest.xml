@@ -155,5 +155,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/monthwidget_info" />
         </receiver>
+
+        <receiver
+            android:name=".widgets.WeekWidgetReceiver"
+            android:exported="true"
+            android:label="@string/s4_widget_week_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekwidget_info" />
+        </receiver>
     </application>
 </manifest>

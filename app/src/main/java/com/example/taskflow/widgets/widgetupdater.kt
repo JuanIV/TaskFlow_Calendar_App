@@ -11,30 +11,12 @@ class WidgetUpdater @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     suspend fun updateAll() {
-        try {
-            TodayTasksWidget().updateAll(context)
-        } catch (e: Exception) {
-            // sin widgets colocados o error de Glance: no debe afectar al resto
-        }
-        try {
-            AgendaWidget().updateAll(context)
-        } catch (e: Exception) {
-        }
-        try {
-            RoutinesWidget().updateAll(context)
-        } catch (e: Exception) {
-        }
-        try {
-            StreakWidget().updateAll(context)
-        } catch (e: Exception) {
-        }
-        try {
-            FocusWidget().updateAll(context)
-        } catch (e: Exception) {
-        }
-        try {
-            MonthWidget().updateAll(context)
-        } catch (e: Exception) {
-        }
+        try { TodayTasksWidget().updateAll(context) } catch (e: Exception) { }
+        try { AgendaWidget().updateAll(context) } catch (e: Exception) { }
+        try { RoutinesWidget().updateAll(context) } catch (e: Exception) { }
+        try { StreakWidget().updateAll(context) } catch (e: Exception) { }
+        try { FocusWidget().updateAll(context) } catch (e: Exception) { }
+        try { MonthWidget().updateAll(context) } catch (e: Exception) { }
+        try { WeekWidget().updateAll(context) } catch (e: Exception) { }
     }
 }
