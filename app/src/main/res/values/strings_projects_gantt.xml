@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p2b_title">Diagrama de Gantt</string>
+    <string name="p2b_fullscreen">Pantalla completa</string>
+    <string name="p2b_zoom_day">Día</string>
+    <string name="p2b_zoom_week">Semana</string>
+    <string name="p2b_zoom_month">Mes</string>
+    <string name="p2b_open_gantt">Ver Gantt</string>
+</resources>

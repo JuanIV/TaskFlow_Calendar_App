@@ -8,6 +8,8 @@ import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.data.entities.ProjectExcludedDayEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
 import com.example.taskflow.data.entities.ProjectDependencyEntity
+import com.example.taskflow.domain.DEFAULT_LEAF_MINUTES
+import com.example.taskflow.domain.MIN_LEAF_MINUTES
 import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanConfig
@@ -462,6 +464,53 @@ class ProjectRepository @Inject constructor(
                 dao.delete(predecessorId, successorId)
                 return@withTransaction OpResult.CYCLE
             }
+            OpResult.OK
+        }
+
+    // ---------- Edicion directa en el Gantt (fase 2c) ----------
+
+    // Crea una restriccion "no antes de" al mover una barra. Pone la fecha al dia indicado.
+    suspend fun setNotBefore(nodeId: Long, day: Long?): OpResult =
+        database.withTransaction<OpResult> {
+            val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            val nodes = nodeDao.getNodesSync(node.projectId)
+            if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
+            nodeDao.updateNode(node.copy(notBeforeDate = day))
+            OpResult.OK
+        }
+
+    // Cambia la duracion de una hoja (en minutos). Usa resizeLeaf para respetar el progreso.
+    suspend fun setLeafMinutes(nodeId: Long, minutes: Int, nowMs: Long): OpResult =
+        database.withTransaction<OpResult> {
+            val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            val nodes = nodeDao.getNodesSync(node.projectId)
+            if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
+            if (node.isMilestone) return@withTransaction OpResult.INVALID_MINUTES
+            if (minutes < MIN_LEAF_MINUTES) return@withTransaction OpResult.INVALID_MINUTES
+            nodeDao.updateNode(resizeLeaf(node, minutes, nowMs))
+            OpResult.OK
+        }
+
+    // Anade una tarea al final de la raiz (fase 2c, creacion desde cero en el Gantt)
+    suspend fun addRootLeaf(projectId: Long, title: String, nowMs: Long, today: Long): OpResult =
+        database.withTransaction<OpResult> {
+            val draft = NodeDraft(title, null, DEFAULT_LEAF_MINUTES, false, 0, null, null)
+            val check = validateNodeDraft(draft, true)
+            if (check != OpResult.OK) return@withTransaction check
+            val nodes = nodeDao.getNodesSync(projectId)
+            val nextOrder = (childrenOfNode(nodes, null).maxOfOrNull { it.sortOrder } ?: -1) + 1
+            val notBefore = if (nodes.isEmpty()) today else null
+            nodeDao.insertNode(
+                ProjectNodeEntity(
+                    projectId = projectId,
+                    parentId = null,
+                    title = title.trim(),
+                    sortOrder = nextOrder,
+                    estimatedMinutes = DEFAULT_LEAF_MINUTES,
+                    notBeforeDate = notBefore,
+                    createdAt = nowMs
+                )
+            )
             OpResult.OK
         }
 }

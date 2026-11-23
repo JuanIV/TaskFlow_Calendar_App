@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -65,6 +66,7 @@ private fun filterLabelRes(filter: ListFilter): Int = when (filter) {
 @Composable
 fun ProjectDetailScreen(
     onBack: () -> Unit,
+    onOpenGantt: (Long) -> Unit = {},
     viewModel: ProjectDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -122,6 +124,9 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onOpenGantt(viewModel.projectId) }) {
+                        Icon(Icons.Default.Timeline, contentDescription = stringResource(R.string.p2b_open_gantt))
+                    }
                     IconButton(onClick = { showEditProject = true }) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.s2_edit))
                     }
