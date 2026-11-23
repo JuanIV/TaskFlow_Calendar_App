@@ -19,6 +19,9 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :projectId")
     suspend fun getProjectById(projectId: Long): ProjectEntity?
 
+    @Query("SELECT * FROM projects WHERE id = :projectId")
+    fun observeProject(projectId: Long): Flow<ProjectEntity?>
+
     @Query("SELECT * FROM projects WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY createdAt ASC")
     fun getActiveProjects(): Flow<List<ProjectEntity>>
 
