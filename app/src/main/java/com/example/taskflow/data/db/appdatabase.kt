@@ -11,6 +11,8 @@ import com.example.taskflow.data.daos.RecordDao
 import com.example.taskflow.data.daos.RoutineDao
 import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.daos.TaskReminderDao
+import com.example.taskflow.data.daos.ProjectDao
+import com.example.taskflow.data.daos.ProjectNodeDao
 import com.example.taskflow.data.entities.*
 
 @Database(
@@ -18,9 +20,10 @@ import com.example.taskflow.data.entities.*
         EventEntity::class, EventReminderEntity::class, EventExceptionEntity::class,
         TaskEntity::class, TaskReminderEntity::class,
         RoutineEntity::class, RoutineTaskEntity::class, RoutineTaskCompletionEntity::class,
-        RoutineDayRecordEntity::class, DayRecordEntity::class, FocusLogEntity::class
+        RoutineDayRecordEntity::class, DayRecordEntity::class, FocusLogEntity::class,
+        ProjectEntity::class, ProjectNodeEntity::class, ProjectExcludedDayEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +34,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun routineDao(): RoutineDao
     abstract fun recordDao(): RecordDao
     abstract fun focusLogDao(): FocusLogDao
+    abstract fun projectDao(): ProjectDao
+    abstract fun projectNodeDao(): ProjectNodeDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -177,6 +182,64 @@ abstract class AppDatabase : RoomDatabase() {
                         "`taskId` INTEGER, `startedAt` INTEGER NOT NULL, `durationMinutes` INTEGER NOT NULL, `type` TEXT NOT NULL)"
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_focus_logs_taskId` ON `focus_logs` (`taskId`)")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `projects` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT,
+                        `startDate` INTEGER NOT NULL,
+                        `deadlineDate` INTEGER,
+                        `dailyCapacityMinutes` INTEGER NOT NULL,
+                        `workingDaysMask` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `isTemplate` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `deletedAt` INTEGER
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `project_excluded_days` (
+                        `projectId` INTEGER NOT NULL,
+                        `epochDay` INTEGER NOT NULL,
+                        PRIMARY KEY(`projectId`, `epochDay`),
+                        FOREIGN KEY(`projectId`) REFERENCES `projects`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_excluded_days_projectId` ON `project_excluded_days` (`projectId`)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `project_nodes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `projectId` INTEGER NOT NULL,
+                        `parentId` INTEGER,
+                        `title` TEXT NOT NULL,
+                        `notes` TEXT,
+                        `sortOrder` INTEGER NOT NULL,
+                        `isMilestone` INTEGER NOT NULL,
+                        `estimatedMinutes` INTEGER NOT NULL,
+                        `doneMinutes` INTEGER NOT NULL,
+                        `completed` INTEGER NOT NULL,
+                        `completedAt` INTEGER,
+                        `actualMinutes` INTEGER,
+                        `priority` INTEGER NOT NULL,
+                        `colorArgb` INTEGER,
+                        `notBeforeDate` INTEGER,
+                        `pulledForwardDay` INTEGER,
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`projectId`) REFERENCES `projects`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`parentId`) REFERENCES `project_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_nodes_projectId` ON `project_nodes` (`projectId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_nodes_parentId` ON `project_nodes` (`parentId`)")
             }
         }
     }

@@ -75,4 +75,12 @@ class MigrationTest {
         assertEquals(1, cursor.getInt(1))
         cursor.close()
     }
+
+    @Test
+    fun migrate5To6() {
+        var db = helper.createDatabase(testDb, 5)
+        db.close()
+        db = helper.runMigrationsAndValidate(testDb, 6, true, AppDatabase.MIGRATION_5_6)
+        db.close()
+    }
 }
