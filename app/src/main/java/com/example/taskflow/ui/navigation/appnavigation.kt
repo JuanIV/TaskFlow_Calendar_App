@@ -3,6 +3,7 @@ package com.example.taskflow.ui.navigation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Repeat
@@ -36,10 +37,13 @@ import com.example.taskflow.ui.settings.TrashScreen
 import com.example.taskflow.ui.stats.StatsDetailScreen
 import com.example.taskflow.ui.stats.StatsScreen
 import com.example.taskflow.ui.tasks.TasksScreen
+import com.example.taskflow.ui.projects.ProjectDetailScreen
+import com.example.taskflow.ui.projects.ProjectsScreen
 
 sealed class Screen(val route: String, val titleRes: Int, val icon: @Composable () -> Unit) {
     object Calendar : Screen("calendar", R.string.tab_calendar, { Icon(Icons.Default.CalendarMonth, null) })
     object Tasks : Screen("tasks", R.string.tab_tasks, { Icon(Icons.Default.List, null) })
+    object Projects : Screen("projects", R.string.tab_projects, { Icon(Icons.Default.Folder, null) })
     object Routines : Screen("routines", R.string.tab_routines, { Icon(Icons.Default.Repeat, null) })
     object Statistics : Screen("statistics", R.string.tab_stats, { Icon(Icons.Default.BarChart, null) })
 }
@@ -50,7 +54,7 @@ fun AppNavigation(
     onRouteHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
-    val screens = listOf(Screen.Calendar, Screen.Tasks, Screen.Routines, Screen.Statistics)
+    val screens = listOf(Screen.Calendar, Screen.Tasks, Screen.Projects, Screen.Routines, Screen.Statistics)
 
     LaunchedEffect(pendingRoute) {
         if (pendingRoute != null) {
@@ -177,6 +181,17 @@ fun AppNavigation(
                     onOpenFocus = { taskId -> navController.navigate("focus?taskId=" + taskId) },
                     onOpenPlanner = { navController.navigate("planner") }
                 )
+            }
+            composable(Screen.Projects.route) {
+                ProjectsScreen(
+                    onOpenProject = { projectId -> navController.navigate("project_detail/$projectId") }
+                )
+            }
+            composable(
+                route = "project_detail/{projectId}",
+                arguments = listOf(navArgument("projectId") { type = NavType.LongType })
+            ) {
+                ProjectDetailScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Routines.route) {
                 RoutinesScreen(

@@ -48,4 +48,7 @@ interface ProjectDao {
 
     @Query("SELECT epochDay FROM project_excluded_days WHERE projectId = :projectId")
     suspend fun getExcludedDays(projectId: Long): List<Long>
+
+    @Query("SELECT * FROM project_excluded_days")
+    fun observeAllExcludedDays(): Flow<List<ProjectExcludedDayEntity>>
 }

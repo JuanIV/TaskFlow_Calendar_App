@@ -74,6 +74,10 @@ class ProjectRepository @Inject constructor(
 
     fun observeNodes(projectId: Long): Flow<List<ProjectNodeEntity>> = nodeDao.observeNodes(projectId)
 
+    fun observeAllNodes(): Flow<List<ProjectNodeEntity>> = nodeDao.observeAllNodes()
+
+    fun observeAllExcludedDays(): Flow<List<ProjectExcludedDayEntity>> = projectDao.observeAllExcludedDays()
+
     // ---------- Lectura ----------
 
     suspend fun getProject(projectId: Long): ProjectEntity? = projectDao.getProjectById(projectId)

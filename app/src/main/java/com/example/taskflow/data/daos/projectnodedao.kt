@@ -24,6 +24,9 @@ interface ProjectNodeDao {
     @Query("SELECT * FROM project_nodes WHERE projectId = :projectId ORDER BY sortOrder ASC, id ASC")
     fun observeNodes(projectId: Long): Flow<List<ProjectNodeEntity>>
 
+    @Query("SELECT * FROM project_nodes")
+    fun observeAllNodes(): Flow<List<ProjectNodeEntity>>
+
     @Query("SELECT * FROM project_nodes WHERE projectId = :projectId ORDER BY sortOrder ASC, id ASC")
     suspend fun getNodesSync(projectId: Long): List<ProjectNodeEntity>
 }

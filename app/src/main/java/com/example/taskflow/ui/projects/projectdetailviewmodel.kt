@@ -7,11 +7,14 @@ import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
 import com.example.taskflow.data.repositories.ProjectRepository
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.data.repositories.toPlanConfig
+import com.example.taskflow.data.repositories.toPlanNode
 import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.ProjectFormData
 import com.example.taskflow.domain.ProjectPlan
 import com.example.taskflow.domain.childrenOfNode
+import com.example.taskflow.domain.findPullCandidate
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.moveTargetsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,19 +48,29 @@ class ProjectDetailViewModel @Inject constructor(
     private val _excludedDays = MutableStateFlow<List<Long>>(emptyList())
     val excludedDays: StateFlow<List<Long>> = _excludedDays.asStateFlow()
 
-    init {
-        // Cada cambio del proyecto o de sus nodos recalcula el plan y los dias excluidos
-        viewModelScope.launch {
-            combine(project, nodes) { _, _ -> Unit }.collect { refreshAll() }
-        }
-    }
+    private val _today = MutableStateFlow(0L)
+    val today: StateFlow<Long> = _today.asStateFlow()
+
+    private val _pullCandidate = MutableStateFlow<Long?>(null)
+    val pullCandidate: StateFlow<Long?> = _pullCandidate.asStateFlow()
 
     private fun now(): Long = System.currentTimeMillis()
 
-    private suspend fun refreshAll() {
+    private suspend fun refreshAll(current: ProjectEntity?, currentNodes: List<ProjectNodeEntity>) {
         val today = logicalDateNow(settingsRepo.getDayStartHourSync())
+        val excluded = repository.getExcludedDays(projectId)
+        _today.value = today
+        _excludedDays.value = excluded
         _plan.value = repository.loadPlan(projectId, today)
-        _excludedDays.value = repository.getExcludedDays(projectId)
+        _pullCandidate.value = if (current == null) {
+            null
+        } else {
+            findPullCandidate(
+                current.toPlanConfig(excluded.toSet()),
+                currentNodes.map { it.toPlanNode() },
+                today
+            )
+        }
     }
 
     private fun launchResult(onResult: (OpResult) -> Unit, block: suspend () -> OpResult) {
@@ -76,8 +89,7 @@ class ProjectDetailViewModel @Inject constructor(
     // Duplica este proyecto. Devuelve el id nuevo o null.
     fun duplicate(newName: String, asTemplate: Boolean, onResult: (Long?) -> Unit) {
         viewModelScope.launch {
-            val today = logicalDateNow(settingsRepo.getDayStartHourSync())
-            onResult(repository.duplicateProject(projectId, newName, asTemplate, today, now()))
+            onResult(repository.duplicateProject(projectId, newName, asTemplate, _today.value, now()))
         }
     }
 
@@ -127,6 +139,23 @@ class ProjectDetailViewModel @Inject constructor(
             repository.setNodeCompleted(nodeId, completed, actualMinutes, now())
         }
 
-    // Destinos validos para mover un nodo (incluye la raiz como null en la UI)
+    // Destinos validos para mover un nodo (la raiz se ofrece desde la UI)
     fun moveTargets(nodeId: Long): List<ProjectNodeEntity> = moveTargetsFor(nodes.value, nodeId)
+
+    // Adelanta una tarea a hoy (RF-19)
+    fun pullForward(nodeId: Long, onDone: () -> Unit) {
+        viewModelScope.launch {
+            repository.setPulledForward(nodeId, _today.value)
+            onDone()
+        }
+    }
+
+    // Cada cambio del proyecto o de sus nodos recalcula el plan. Debe ir al final de la clase.
+    init {
+        viewModelScope.launch {
+            combine(project, nodes) { p, n -> Pair(p, n) }.collect { pair ->
+                refreshAll(pair.first, pair.second)
+            }
+        }
+    }
 }
