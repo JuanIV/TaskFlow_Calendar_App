@@ -13,6 +13,7 @@ import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.daos.TaskReminderDao
 import com.example.taskflow.data.daos.ProjectDao
 import com.example.taskflow.data.daos.ProjectNodeDao
+import com.example.taskflow.data.daos.ProjectDependencyDao
 import com.example.taskflow.data.entities.*
 
 @Database(
@@ -21,9 +22,10 @@ import com.example.taskflow.data.entities.*
         TaskEntity::class, TaskReminderEntity::class,
         RoutineEntity::class, RoutineTaskEntity::class, RoutineTaskCompletionEntity::class,
         RoutineDayRecordEntity::class, DayRecordEntity::class, FocusLogEntity::class,
-        ProjectEntity::class, ProjectNodeEntity::class, ProjectExcludedDayEntity::class
+        ProjectEntity::class, ProjectNodeEntity::class, ProjectExcludedDayEntity::class,
+        ProjectDependencyEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun focusLogDao(): FocusLogDao
     abstract fun projectDao(): ProjectDao
     abstract fun projectNodeDao(): ProjectNodeDao
+    abstract fun projectDependencyDao(): ProjectDependencyDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -240,6 +243,21 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_nodes_projectId` ON `project_nodes` (`projectId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_nodes_parentId` ON `project_nodes` (`parentId`)")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `project_dependencies` (
+                        `predecessorId` INTEGER NOT NULL,
+                        `successorId` INTEGER NOT NULL,
+                        PRIMARY KEY(`predecessorId`, `successorId`),
+                        FOREIGN KEY(`predecessorId`) REFERENCES `project_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`successorId`) REFERENCES `project_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_dependencies_successorId` ON `project_dependencies` (`successorId`)")
             }
         }
     }

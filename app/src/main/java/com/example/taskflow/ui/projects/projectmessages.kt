@@ -57,6 +57,7 @@ fun projectStatusMessage(
         PlanStatus.SIN_DEADLINE -> context.getString(R.string.p1c_status_no_deadline)
         PlanStatus.SIN_PENDIENTE -> context.getString(R.string.p1c_status_done_plan)
         PlanStatus.SIN_CAPACIDAD -> context.getString(R.string.p1c_status_no_capacity)
+        PlanStatus.CICLO -> context.getString(R.string.p2a_status_cycle)
         else -> context.getString(R.string.p1c_status_paused)
     }
 }

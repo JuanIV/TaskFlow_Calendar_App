@@ -74,6 +74,7 @@ fun ProjectDetailScreen(
     val excluded by viewModel.excludedDays.collectAsState()
     val today by viewModel.today.collectAsState()
     val pullCandidate by viewModel.pullCandidate.collectAsState()
+    val dependencies by viewModel.dependencies.collectAsState()
 
     var filterName by rememberSaveable { mutableStateOf(ListFilter.ALL.name) }
     var collapsed by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -87,6 +88,7 @@ fun ProjectDetailScreen(
     var editingNode by remember { mutableStateOf<ProjectNodeEntity?>(null) }
     var deletingNodeId by remember { mutableStateOf<Long?>(null) }
     var movingNodeId by remember { mutableStateOf<Long?>(null) }
+    var depNodeId by remember { mutableStateOf<Long?>(null) }
 
     val currentProject = project
     val currentPlan = plan
@@ -235,6 +237,7 @@ fun ProjectDetailScreen(
                             onAddChild = { newNodeParent = row.nodeId; showNewNode = true },
                             onEdit = { editingNode = nodes.firstOrNull { it.id == row.nodeId } },
                             onMove = { movingNodeId = row.nodeId },
+                            onDependencies = { depNodeId = row.nodeId },
                             onDelete = { deletingNodeId = row.nodeId },
                             onUp = { viewModel.moveSibling(row.nodeId, -1) { result -> showOpResult(context, result) } },
                             onDown = { viewModel.moveSibling(row.nodeId, 1) { result -> showOpResult(context, result) } }
@@ -348,6 +351,26 @@ fun ProjectDetailScreen(
             }
         )
     }
+
+    val depNode = depNodeId
+    val depSuccessor = if (depNode == null) null else nodes.firstOrNull { it.id == depNode }
+    if (depSuccessor != null) {
+        DependencyDialog(
+            successor = depSuccessor,
+            nodes = nodes,
+            dependencies = dependencies,
+            onToggle = { predecessorId, enabled ->
+                viewModel.setDependency(predecessorId, depSuccessor.id, enabled) { result ->
+                    if (result == OpResult.CYCLE) {
+                        Toast.makeText(context, context.getString(R.string.p2a_err_dep_cycle), Toast.LENGTH_SHORT).show()
+                    } else {
+                        showOpResult(context, result)
+                    }
+                }
+            },
+            onDismiss = { depNodeId = null }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -359,6 +382,7 @@ private fun ListRowView(
     onAddChild: () -> Unit,
     onEdit: () -> Unit,
     onMove: () -> Unit,
+    onDependencies: () -> Unit,
     onDelete: () -> Unit,
     onUp: () -> Unit,
     onDown: () -> Unit
@@ -377,7 +401,8 @@ private fun ListRowView(
         null
     }
     val milestoneText = if (row.isMilestone) stringResource(R.string.p1c_milestone_label) else null
-    val subtitleParts = listOfNotNull(milestoneText, durationText, datesText)
+    val criticalText = if (row.critical) stringResource(R.string.p2a_critical) else null
+    val subtitleParts = listOfNotNull(milestoneText, criticalText, durationText, datesText)
     val todayLabel = row.todayLabel
 
     Row(
@@ -447,6 +472,10 @@ private fun ListRowView(
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.p1c_action_move)) },
                     onClick = { menuExpanded = false; onMove() }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.p2a_action_deps)) },
+                    onClick = { menuExpanded = false; onDependencies() }
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.p1c_action_up)) },

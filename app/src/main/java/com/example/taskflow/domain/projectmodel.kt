@@ -15,9 +15,10 @@ object PlanStatus {
     const val OK = "OK"
     const val JUSTO = "JUSTO"
     const val ATRASADO = "ATRASADO"
+    const val CICLO = "CICLO"
 }
 
-// Nodo del arbol tal como lo necesita el motor (sin campos de UI)
+// Nodo del arbol tal como lo necesita el motor. predecessors = ids de sus predecesores directos.
 data class PlanNode(
     val id: Long,
     val parentId: Long?,
@@ -27,7 +28,8 @@ data class PlanNode(
     val doneMinutes: Int,
     val completed: Boolean,
     val notBeforeDate: Long?,
-    val pulledForwardDay: Long?
+    val pulledForwardDay: Long?,
+    val predecessors: List<Long> = emptyList()
 )
 
 data class PlanConfig(
@@ -66,5 +68,7 @@ data class ProjectPlan(
     val progressPercent: Int,
     val remainingMinutes: Int,
     val nodes: Map<Long, NodeSchedule>,
-    val parts: List<PlanPart>
+    val parts: List<PlanPart>,
+    val executionOrder: List<Long> = emptyList(),
+    val criticalNodeIds: Set<Long> = emptySet()
 )

@@ -7,6 +7,7 @@ import com.example.taskflow.data.db.AppDatabase
 import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.data.entities.ProjectExcludedDayEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
+import com.example.taskflow.data.entities.ProjectDependencyEntity
 import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanConfig
@@ -24,9 +25,9 @@ import com.example.taskflow.domain.hasChildren
 import com.example.taskflow.domain.insertAt
 import com.example.taskflow.domain.isZeroLength
 import com.example.taskflow.domain.leafToGroup
+import com.example.taskflow.domain.orderWork
 import com.example.taskflow.domain.planProject
 import com.example.taskflow.domain.preorderNodeIds
-import com.example.taskflow.domain.todayParts
 import com.example.taskflow.domain.resizeLeaf
 import com.example.taskflow.domain.subtreeHasProgress
 import com.example.taskflow.domain.subtreeIds
@@ -37,7 +38,7 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-fun ProjectNodeEntity.toPlanNode(): PlanNode = PlanNode(
+fun ProjectNodeEntity.toPlanNode(predecessors: List<Long> = emptyList()): PlanNode = PlanNode(
     id = id,
     parentId = parentId,
     sortOrder = sortOrder,
@@ -46,8 +47,15 @@ fun ProjectNodeEntity.toPlanNode(): PlanNode = PlanNode(
     doneMinutes = doneMinutes,
     completed = completed,
     notBeforeDate = notBeforeDate,
-    pulledForwardDay = pulledForwardDay
+    pulledForwardDay = pulledForwardDay,
+    predecessors = predecessors
 )
+
+// Convierte nodos y dependencias en PlanNode con sus predecesores
+fun buildPlanNodes(nodes: List<ProjectNodeEntity>, deps: List<ProjectDependencyEntity>): List<PlanNode> {
+    val predsByNode = deps.groupBy({ it.successorId }, { it.predecessorId })
+    return nodes.map { it.toPlanNode(predsByNode[it.id].orEmpty()) }
+}
 
 // Un proyecto no ACTIVE no genera trabajo planificado
 fun ProjectEntity.toPlanConfig(excludedDays: Set<Long>): PlanConfig = PlanConfig(
@@ -198,7 +206,19 @@ class ProjectRepository @Inject constructor(
                         createdAt = nowMs
                     )
                 )
-                newIds[oldId] = newNodeId
+                val depDao = database.projectDependencyDao()
+            for (dep in depDao.getForProject(sourceId)) {
+                val p = newIds[dep.predecessorId]
+                val s = newIds[dep.successorId]
+                if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
+            }
+            newIds[oldId] = newNodeId
+            }
+            val depDao = database.projectDependencyDao()
+            for (dep in depDao.getForProject(sourceId)) {
+                val p = newIds[dep.predecessorId]
+                val s = newIds[dep.successorId]
+                if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
             }
             newId
         }
@@ -385,7 +405,10 @@ class ProjectRepository @Inject constructor(
     suspend fun loadPlan(projectId: Long, today: Long): ProjectPlan? {
         val project = projectDao.getProjectById(projectId) ?: return null
         val excluded = projectDao.getExcludedDays(projectId).toSet()
-        val nodes = nodeDao.getNodesSync(projectId).map { it.toPlanNode() }
+        val nodes = buildPlanNodes(
+            nodeDao.getNodesSync(projectId),
+            database.projectDependencyDao().getForProject(projectId)
+        )
         return planProject(project.toPlanConfig(excluded), nodes, today)
     }
 
@@ -394,7 +417,10 @@ class ProjectRepository @Inject constructor(
         val projects = projectDao.getActiveProjectsSync()
         return projects.map { project ->
             val excluded = projectDao.getExcludedDays(project.id).toSet()
-            val nodes = nodeDao.getNodesSync(project.id).map { it.toPlanNode() }
+            val nodes = buildPlanNodes(
+                nodeDao.getNodesSync(project.id),
+                database.projectDependencyDao().getForProject(project.id)
+            )
             Pair(project, planProject(project.toPlanConfig(excluded), nodes, today))
         }
     }
@@ -403,13 +429,39 @@ class ProjectRepository @Inject constructor(
     suspend fun getNodeTitles(projectId: Long): Map<Long, String> =
         nodeDao.getNodesSync(projectId).associate { it.id to it.title }
 
-    // Partes planificadas para un dia concreto, usando el plan completo de cada proyecto activo
-    suspend fun countPlannedPartsOn(day: Long): Int =
-        getActiveProjectPlansSync(day).sumOf { (_, plan) -> todayParts(plan, day).size }
+    // ---------- Dependencias (fase 2a) ----------
 
-    // Partes de ese dia que ya estan completas. Una parte cuenta como hecha si su hoja esta completa.
-    suspend fun countCompletedPartsOn(day: Long): Int =
-        getActiveProjectPlansSync(day).sumOf { (_, plan) ->
-            todayParts(plan, day).count { part -> plan.nodes[part.nodeId]?.completed == true }
+    fun observeDependencies(projectId: Long): Flow<List<ProjectDependencyEntity>> =
+        database.projectDependencyDao().observeForProject(projectId)
+
+    fun observeAllDependencies(): Flow<List<ProjectDependencyEntity>> =
+        database.projectDependencyDao().observeAll()
+
+    // enabled = true: "successorId espera a predecessorId". enabled = false la quita.
+    // Devuelve CYCLE si la relacion crea un ciclo, o si una tarea y su ancestro/descendiente se relacionan.
+    suspend fun setDependency(projectId: Long, predecessorId: Long, successorId: Long, enabled: Boolean): OpResult =
+        database.withTransaction<OpResult> {
+            val dao = database.projectDependencyDao()
+            if (!enabled) {
+                dao.delete(predecessorId, successorId)
+                return@withTransaction OpResult.OK
+            }
+            if (predecessorId == successorId) return@withTransaction OpResult.CYCLE
+            val nodes = nodeDao.getNodesSync(projectId)
+            if (nodes.none { it.id == predecessorId } || nodes.none { it.id == successorId }) {
+                return@withTransaction OpResult.NOT_FOUND
+            }
+            if (subtreeIds(nodes, predecessorId).contains(successorId) ||
+                subtreeIds(nodes, successorId).contains(predecessorId)
+            ) {
+                return@withTransaction OpResult.CYCLE
+            }
+            dao.insert(ProjectDependencyEntity(predecessorId, successorId))
+            val deps = dao.getForProject(projectId)
+            if (orderWork(buildPlanNodes(nodes, deps)) == null) {
+                dao.delete(predecessorId, successorId)
+                return@withTransaction OpResult.CYCLE
+            }
+            OpResult.OK
         }
 }

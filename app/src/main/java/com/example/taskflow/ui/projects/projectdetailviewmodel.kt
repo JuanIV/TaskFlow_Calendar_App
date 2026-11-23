@@ -3,10 +3,12 @@ package com.example.taskflow.ui.projects
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.taskflow.data.entities.ProjectDependencyEntity
 import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
 import com.example.taskflow.data.repositories.ProjectRepository
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.data.repositories.buildPlanNodes
 import com.example.taskflow.data.repositories.toPlanConfig
 import com.example.taskflow.data.repositories.toPlanNode
 import com.example.taskflow.domain.NodeDraft
@@ -42,6 +44,9 @@ class ProjectDetailViewModel @Inject constructor(
     val nodes: StateFlow<List<ProjectNodeEntity>> = repository.observeNodes(projectId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val dependencies: StateFlow<List<ProjectDependencyEntity>> = repository.observeDependencies(projectId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _plan = MutableStateFlow<ProjectPlan?>(null)
     val plan: StateFlow<ProjectPlan?> = _plan.asStateFlow()
 
@@ -56,7 +61,11 @@ class ProjectDetailViewModel @Inject constructor(
 
     private fun now(): Long = System.currentTimeMillis()
 
-    private suspend fun refreshAll(current: ProjectEntity?, currentNodes: List<ProjectNodeEntity>) {
+    private suspend fun refreshAll(
+        current: ProjectEntity?,
+        currentNodes: List<ProjectNodeEntity>,
+        currentDeps: List<ProjectDependencyEntity>
+    ) {
         val today = logicalDateNow(settingsRepo.getDayStartHourSync())
         val excluded = repository.getExcludedDays(projectId)
         _today.value = today
@@ -67,7 +76,7 @@ class ProjectDetailViewModel @Inject constructor(
         } else {
             findPullCandidate(
                 current.toPlanConfig(excluded.toSet()),
-                currentNodes.map { it.toPlanNode() },
+                buildPlanNodes(currentNodes, currentDeps),
                 today
             )
         }
@@ -150,11 +159,17 @@ class ProjectDetailViewModel @Inject constructor(
         }
     }
 
-    // Cada cambio del proyecto o de sus nodos recalcula el plan. Debe ir al final de la clase.
+    // Anade o quita una dependencia: successorId espera a predecessorId
+    fun setDependency(predecessorId: Long, successorId: Long, enabled: Boolean, onResult: (OpResult) -> Unit) =
+        launchResult(onResult) {
+            repository.setDependency(projectId, predecessorId, successorId, enabled)
+        }
+
+    // Cada cambio del proyecto, de sus nodos o de sus dependencias recalcula el plan.
     init {
         viewModelScope.launch {
-            combine(project, nodes) { p, n -> Pair(p, n) }.collect { pair ->
-                refreshAll(pair.first, pair.second)
+            combine(project, nodes, dependencies) { p, n, d -> Triple(p, n, d) }.collect { t ->
+                refreshAll(t.first, t.second, t.third)
             }
         }
     }
