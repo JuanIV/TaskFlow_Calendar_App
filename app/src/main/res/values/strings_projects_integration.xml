@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p1d_section_projects">Proyectos</string>
+    <string name="p1d_ch_today_name">Proyectos de hoy</string>
+    <string name="p1d_ch_today_desc">Notificacion fija con las partes de hoy de tus proyectos</string>
+    <string name="p1d_ch_risk_name">Riesgo en proyectos</string>
+    <string name="p1d_ch_risk_desc">Avisos cuando un proyecto se queda sin margen o se atrasa</string>
+    <string name="p1d_today_title">Proyectos de hoy</string>
+    <string name="p1d_and_more">y %1$d más...</string>
+    <string name="p1d_risk_at_risk">Ya no te sobra margen con la fecha límite</string>
+    <string name="p1d_risk_no_margin">Vas justo: sin margen para la fecha límite</string>
+</resources>

@@ -26,6 +26,7 @@ import com.example.taskflow.domain.isZeroLength
 import com.example.taskflow.domain.leafToGroup
 import com.example.taskflow.domain.planProject
 import com.example.taskflow.domain.preorderNodeIds
+import com.example.taskflow.domain.todayParts
 import com.example.taskflow.domain.resizeLeaf
 import com.example.taskflow.domain.subtreeHasProgress
 import com.example.taskflow.domain.subtreeIds
@@ -356,6 +357,24 @@ class ProjectRepository @Inject constructor(
         )
     }
 
+    // Completa la parte de hoy de una hoja. Si es la ultima parte pendiente, completa la hoja entera.
+    suspend fun completeTodayPart(nodeId: Long, minutes: Int, nowMs: Long) {
+        val entity = nodeDao.getNodeById(nodeId) ?: return
+        if (isZeroLength(entity.toPlanNode())) return
+        val remaining = maxOf(0, entity.estimatedMinutes - entity.doneMinutes)
+        if (minutes >= remaining) {
+            nodeDao.updateNode(
+                entity.copy(
+                    doneMinutes = entity.estimatedMinutes,
+                    completed = true,
+                    completedAt = nowMs
+                )
+            )
+        } else {
+            markPartDone(nodeId, minutes, nowMs)
+        }
+    }
+
     // Adelantar a hoy (RF-19)
     suspend fun setPulledForward(nodeId: Long, today: Long) {
         val entity = nodeDao.getNodeById(nodeId) ?: return
@@ -369,4 +388,28 @@ class ProjectRepository @Inject constructor(
         val nodes = nodeDao.getNodesSync(projectId).map { it.toPlanNode() }
         return planProject(project.toPlanConfig(excluded), nodes, today)
     }
+
+    // Proyectos activos con su plan de hoy, para Tareas, widget y notificacion
+    suspend fun getActiveProjectPlansSync(today: Long): List<Pair<ProjectEntity, ProjectPlan>> {
+        val projects = projectDao.getActiveProjectsSync()
+        return projects.map { project ->
+            val excluded = projectDao.getExcludedDays(project.id).toSet()
+            val nodes = nodeDao.getNodesSync(project.id).map { it.toPlanNode() }
+            Pair(project, planProject(project.toPlanConfig(excluded), nodes, today))
+        }
+    }
+
+    // Titulos de los nodos de un proyecto, para etiquetas
+    suspend fun getNodeTitles(projectId: Long): Map<Long, String> =
+        nodeDao.getNodesSync(projectId).associate { it.id to it.title }
+
+    // Partes planificadas para un dia concreto, usando el plan completo de cada proyecto activo
+    suspend fun countPlannedPartsOn(day: Long): Int =
+        getActiveProjectPlansSync(day).sumOf { (_, plan) -> todayParts(plan, day).size }
+
+    // Partes de ese dia que ya estan completas. Una parte cuenta como hecha si su hoja esta completa.
+    suspend fun countCompletedPartsOn(day: Long): Int =
+        getActiveProjectPlansSync(day).sumOf { (_, plan) ->
+            todayParts(plan, day).count { part -> plan.nodes[part.nodeId]?.completed == true }
+        }
 }

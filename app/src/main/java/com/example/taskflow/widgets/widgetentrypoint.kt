@@ -30,6 +30,7 @@ interface WidgetEntryPoint {
     fun coordinator(): SchedulingCoordinator
     fun completion(): TaskCompletionHelper
     fun widgetUpdater(): WidgetUpdater
+    fun projectRepository(): com.example.taskflow.data.repositories.ProjectRepository
 }
 
 fun widgetEntryPoint(context: Context): WidgetEntryPoint =

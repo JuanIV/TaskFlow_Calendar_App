@@ -63,7 +63,8 @@ class DayCloser @Inject constructor(
     private val taskDao: TaskDao,
     private val routineDao: RoutineDao,
     private val recordDao: RecordDao,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val projectRepository: com.example.taskflow.data.repositories.ProjectRepository
 ) {
     suspend fun closeDaysUpTo(targetEpochDay: Long) {
         val lastClosed = settingsRepo.getLastClosedDaySync()
@@ -99,7 +100,13 @@ class DayCloser @Inject constructor(
         }
 
         val topTasks = taskDao.getTasksForDateSync(day).filter { it.parentTaskId == null }
-        val global = evaluateGlobalDay(results, topTasks.size, topTasks.count { it.isCompleted })
+        val projectRequired = projectRepository.countPlannedPartsOn(day)
+        val projectDone = projectRepository.countCompletedPartsOn(day)
+        val global = evaluateGlobalDay(
+            results,
+            topTasks.size + projectRequired,
+            topTasks.count { it.isCompleted } + projectDone
+        )
         recordDao.insertDayRecord(DayRecordEntity(day, global.status, global.required, global.done))
     }
 }

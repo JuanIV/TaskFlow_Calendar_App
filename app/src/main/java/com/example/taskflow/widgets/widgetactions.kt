@@ -103,3 +103,15 @@ class RefreshWidgetCallback : ActionCallback {
         try { widgetEntryPoint(context).widgetUpdater().updateAll() } catch (e: Exception) { }
     }
 }
+
+// Completa la parte de hoy de un proyecto desde el widget. TaskId lleva el id del nodo; Delta, los minutos.
+class CompleteProjectPartCallback : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val nodeId = parameters[WidgetKeys.TaskId] ?: return
+        val minutes = parameters[WidgetKeys.Delta] ?: return
+        val entry = widgetEntryPoint(context)
+        try { entry.projectRepository().completeTodayPart(nodeId, minutes, System.currentTimeMillis()) } catch (e: Exception) { }
+        try { entry.widgetUpdater().updateAll() } catch (e: Exception) { }
+        try { entry.coordinator().refreshNotifications() } catch (e: Exception) { }
+    }
+}

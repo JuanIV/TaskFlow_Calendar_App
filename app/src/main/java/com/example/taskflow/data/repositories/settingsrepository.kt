@@ -129,6 +129,7 @@ class SettingsRepository @Inject constructor(
     private val ACHIEVEMENTS = stringSetPreferencesKey("achievements_unlocked")
     private val SYNC_FOLDER = stringPreferencesKey("sync_folder_uri")
     private val ALARM_SNOOZE = intPreferencesKey("alarm_snooze_minutes")
+    private fun projectRiskKey(projectId: Long) = stringPreferencesKey("project_risk_$projectId")
 
     val themeModeFlow: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "SYSTEM" }
     val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { it[DYNAMIC_COLOR] ?: true }
@@ -210,4 +211,11 @@ class SettingsRepository @Inject constructor(
     }
     suspend fun setSyncFolder(uri: String) { context.dataStore.edit { it[SYNC_FOLDER] = uri } }
     suspend fun setAlarmSnooze(minutes: Int) { context.dataStore.edit { it[ALARM_SNOOZE] = minutes } }
+
+    suspend fun getProjectRiskSync(projectId: Long): String? =
+        context.dataStore.data.first()[projectRiskKey(projectId)]
+
+    suspend fun setProjectRisk(projectId: Long, status: String) {
+        context.dataStore.edit { it[projectRiskKey(projectId)] = status }
+    }
 }
