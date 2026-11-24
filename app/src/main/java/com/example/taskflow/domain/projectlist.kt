@@ -17,7 +17,8 @@ data class ListRow(
     val endDay: Long?,
     val expanded: Boolean,
     val late: Boolean,
-    val todayLabel: String?
+    val todayLabel: String?,
+    val critical: Boolean = false
 )
 
 // Construye las filas visibles de la vista Lista, en preorden.
@@ -85,7 +86,8 @@ fun buildListRows(
                     endDay = s?.endDay,
                     expanded = !collapsed.contains(node.id),
                     late = isLate(node.id),
-                    todayLabel = if (part != null) partLabel(node.title, part) else null
+                    todayLabel = if (part != null) partLabel(node.title, part) else null,
+                    critical = plan.criticalNodeIds.contains(node.id)
                 )
             )
             if (isGroup && !collapsed.contains(node.id)) visit(node.id, depth + 1)

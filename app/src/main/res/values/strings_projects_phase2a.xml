@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p2a_action_deps">Dependencias...</string>
+    <string name="p2a_critical">Camino crítico</string>
+    <string name="p2a_dep_title">Depende de...</string>
+    <string name="p2a_dep_none">No hay otras tareas disponibles</string>
+    <string name="p2a_err_dep_cycle">Esa dependencia crearía un ciclo o relaciona una tarea con su propio grupo</string>
+    <string name="p2a_status_cycle">Hay dependencias circulares. Revísalas.</string>
+</resources>

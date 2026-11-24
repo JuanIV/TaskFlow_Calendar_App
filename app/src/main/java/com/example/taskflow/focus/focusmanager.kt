@@ -13,6 +13,7 @@ import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.entities.FocusLogEntity
 import com.example.taskflow.data.repositories.SettingsRepository
 import com.example.taskflow.domain.FocusState
+import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.mainactivity
 import com.example.taskflow.notifications.NotificationChannels
 import com.example.taskflow.scheduling.AlarmContract
@@ -39,7 +40,8 @@ class FocusManager @Inject constructor(
     private val settingsRepo: SettingsRepository,
     private val alarmScheduler: AlarmScheduler,
     private val focusLogDao: FocusLogDao,
-    private val taskDao: TaskDao
+    private val taskDao: TaskDao,
+    private val projectRepository: com.example.taskflow.data.repositories.ProjectRepository
 ) {
     private val mutex = Mutex()
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -64,6 +66,18 @@ class FocusManager @Inject constructor(
         } else {
             begin(FocusState(true, "POMODORO", "FOCUS", taskId, 0L, 0L, 0), cfg.focusMin, cfg)
         }
+    }
+
+    // Inicia un enfoque ligado a un nodo de proyecto (fase 2e)
+    suspend fun startForProjectNode(nodeId: Long, timerMinutes: Int) = mutex.withLock {
+        val current = currentState()
+        if (current.active) finish(current)
+        val cfg = config()
+        begin(
+            FocusState(true, "TIMER", "TIMER", null, 0L, 0L, 0, nodeId),
+            timerMinutes.coerceIn(1, 600),
+            cfg
+        )
     }
 
     suspend fun stop() = mutex.withLock {
@@ -139,6 +153,11 @@ class FocusManager @Inject constructor(
         val minutes = ((minOf(now, s.endMs) - s.startMs) / 60_000L).toInt()
         if (minutes >= 1) {
             focusLogDao.insert(FocusLogEntity(taskId = s.taskId, startedAt = s.startMs, durationMinutes = minutes, type = s.phase))
+            val node = s.projectNodeId
+            if (node != null) {
+                val day = logicalDateNow(settingsRepo.getDayStartHourSync())
+                projectRepository.recordFocusMinutes(node, day, minutes, now)
+            }
         }
     }
 

@@ -6,7 +6,9 @@ data class AchievementStats(
     val focusMinutes: Int,
     val perfectDays: Int,
     val routines: Int,
-    val events: Int
+    val events: Int,
+    val projects: Int = 0,
+    val projectsEarly: Int = 0
 )
 
 data class AchievementDef(val id: String, val metric: String, val target: Int)
@@ -27,7 +29,9 @@ val ACHIEVEMENT_DEFS = listOf(
     AchievementDef("DAYS_50", "DAYS", 50),
     AchievementDef("DAYS_100", "DAYS", 100),
     AchievementDef("ROUTINE_1", "ROUTINES", 1),
-    AchievementDef("EVENT_1", "EVENTS", 1)
+    AchievementDef("EVENT_1", "EVENTS", 1),
+    AchievementDef("PROJECT_1", "PROJECTS", 1),
+    AchievementDef("PROJECT_EARLY_1", "PROJECTS_EARLY", 1)
 )
 
 fun achievementMetric(stats: AchievementStats, metric: String): Int = when (metric) {
@@ -37,6 +41,8 @@ fun achievementMetric(stats: AchievementStats, metric: String): Int = when (metr
     "DAYS" -> stats.perfectDays
     "ROUTINES" -> stats.routines
     "EVENTS" -> stats.events
+    "PROJECTS" -> stats.projects
+    "PROJECTS_EARLY" -> stats.projectsEarly
     else -> 0
 }
 

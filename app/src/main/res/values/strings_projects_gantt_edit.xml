@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p2c_add_task_title">Añadir tarea</string>
+    <string name="p2c_add_task_label">Título de la tarea</string>
+    <string name="p2c_save">Guardar</string>
+    <string name="p2c_cancel">Cancelar</string>
+</resources>

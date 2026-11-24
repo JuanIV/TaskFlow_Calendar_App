@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p2e_deviation">Desviación media: %1$s (%2$d hojas)</string>
+    <string name="p2e_widget_label">Proyecto</string>
+    <string name="p2e_widget_desc">Progreso y tarea de hoy de un proyecto</string>
+    <string name="p2e_widget_choose">Elige un proyecto</string>
+    <string name="p2e_widget_progress">Progreso: %1$d%%</string>
+    <string name="p2e_widget_pick_title">Elige un proyecto</string>
+</resources>

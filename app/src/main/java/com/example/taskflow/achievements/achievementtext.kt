@@ -19,6 +19,8 @@ fun achievementNameRes(id: String): Int = when (id) {
     "DAYS_100" -> R.string.s3_ach_name_days_100
     "ROUTINE_1" -> R.string.s3_ach_name_routine_1
     "EVENT_1" -> R.string.s3_ach_name_event_1
+    "PROJECT_1" -> R.string.p2d_ach_name_project_1
+    "PROJECT_EARLY_1" -> R.string.p2d_ach_name_project_early_1
     else -> R.string.s3_ach_name_unknown
 }
 
@@ -28,5 +30,7 @@ fun achievementDescRes(metric: String): Int = when (metric) {
     "FOCUS" -> R.string.s3_ach_d_focus
     "DAYS" -> R.string.s3_ach_d_days
     "ROUTINES" -> R.string.s3_ach_d_routines
+    "PROJECTS" -> R.string.p2d_ach_d_project
+    "PROJECTS_EARLY" -> R.string.p2d_ach_d_project_early
     else -> R.string.s3_ach_d_events
 }

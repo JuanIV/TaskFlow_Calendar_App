@@ -77,7 +77,12 @@ class DayCloser @Inject constructor(
         val routines = routineDao.getAllRoutinesSync()
         val firstDay = maxOf(lastClosed + 1, targetEpochDay - 400)
         for (day in firstDay..targetEpochDay) {
-            database.withTransaction { closeDay(day, routines) }
+            database.withTransaction {
+                // Nota: el snapshot retroactivo para dias pasados es una aproximacion;
+                // la fuente fiable es la escritura directa en completeTodayPart y recordFocusMinutes.
+                projectRepository.snapshotPlanForDay(day)
+                closeDay(day, routines)
+            }
         }
         settingsRepo.setLastClosedDay(targetEpochDay)
 
@@ -100,12 +105,11 @@ class DayCloser @Inject constructor(
         }
 
         val topTasks = taskDao.getTasksForDateSync(day).filter { it.parentTaskId == null }
-        val projectRequired = projectRepository.countPlannedPartsOn(day)
-        val projectDone = projectRepository.countCompletedPartsOn(day)
+        val projectTotals = projectRepository.totalsForClosedDay(day)
         val global = evaluateGlobalDay(
             results,
-            topTasks.size + projectRequired,
-            topTasks.count { it.isCompleted } + projectDone
+            topTasks.size + projectTotals.planned,
+            topTasks.count { it.isCompleted } + projectTotals.done
         )
         recordDao.insertDayRecord(DayRecordEntity(day, global.status, global.required, global.done))
     }

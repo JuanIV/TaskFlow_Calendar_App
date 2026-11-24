@@ -7,6 +7,11 @@ import com.example.taskflow.data.db.AppDatabase
 import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.data.entities.ProjectExcludedDayEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
+import com.example.taskflow.data.entities.ProjectDependencyEntity
+import com.example.taskflow.data.entities.ProjectDailyLogEntity
+import com.example.taskflow.domain.DayProjectTotals
+import com.example.taskflow.domain.DEFAULT_LEAF_MINUTES
+import com.example.taskflow.domain.MIN_LEAF_MINUTES
 import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanConfig
@@ -18,14 +23,18 @@ import com.example.taskflow.domain.applyPartDone
 import com.example.taskflow.domain.canTransitionProjectStatus
 import com.example.taskflow.domain.checkCanHaveChildren
 import com.example.taskflow.domain.childrenOfNode
+import com.example.taskflow.domain.clampedDone
 import com.example.taskflow.domain.cleanNotes
 import com.example.taskflow.domain.groupToLeaf
 import com.example.taskflow.domain.hasChildren
 import com.example.taskflow.domain.insertAt
 import com.example.taskflow.domain.isZeroLength
 import com.example.taskflow.domain.leafToGroup
+import com.example.taskflow.domain.mergeDailyLog
+import com.example.taskflow.domain.orderWork
 import com.example.taskflow.domain.planProject
 import com.example.taskflow.domain.preorderNodeIds
+import com.example.taskflow.domain.projectCsvRows
 import com.example.taskflow.domain.todayParts
 import com.example.taskflow.domain.resizeLeaf
 import com.example.taskflow.domain.subtreeHasProgress
@@ -37,7 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-fun ProjectNodeEntity.toPlanNode(): PlanNode = PlanNode(
+fun ProjectNodeEntity.toPlanNode(predecessors: List<Long> = emptyList()): PlanNode = PlanNode(
     id = id,
     parentId = parentId,
     sortOrder = sortOrder,
@@ -46,8 +55,15 @@ fun ProjectNodeEntity.toPlanNode(): PlanNode = PlanNode(
     doneMinutes = doneMinutes,
     completed = completed,
     notBeforeDate = notBeforeDate,
-    pulledForwardDay = pulledForwardDay
+    pulledForwardDay = pulledForwardDay,
+    predecessors = predecessors
 )
+
+// Convierte nodos y dependencias en PlanNode con sus predecesores
+fun buildPlanNodes(nodes: List<ProjectNodeEntity>, deps: List<ProjectDependencyEntity>): List<PlanNode> {
+    val predsByNode = deps.groupBy({ it.successorId }, { it.predecessorId })
+    return nodes.map { it.toPlanNode(predsByNode[it.id].orEmpty()) }
+}
 
 // Un proyecto no ACTIVE no genera trabajo planificado
 fun ProjectEntity.toPlanConfig(excludedDays: Set<Long>): PlanConfig = PlanConfig(
@@ -198,7 +214,19 @@ class ProjectRepository @Inject constructor(
                         createdAt = nowMs
                     )
                 )
-                newIds[oldId] = newNodeId
+                val depDao = database.projectDependencyDao()
+            for (dep in depDao.getForProject(sourceId)) {
+                val p = newIds[dep.predecessorId]
+                val s = newIds[dep.successorId]
+                if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
+            }
+            newIds[oldId] = newNodeId
+            }
+            val depDao = database.projectDependencyDao()
+            for (dep in depDao.getForProject(sourceId)) {
+                val p = newIds[dep.predecessorId]
+                val s = newIds[dep.successorId]
+                if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
             }
             newId
         }
@@ -357,11 +385,12 @@ class ProjectRepository @Inject constructor(
         )
     }
 
-    // Completa la parte de hoy de una hoja. Si es la ultima parte pendiente, completa la hoja entera.
-    suspend fun completeTodayPart(nodeId: Long, minutes: Int, nowMs: Long) {
+    // Completa la parte de hoy de una hoja y registra los minutos en el log del dia.
+    suspend fun completeTodayPart(nodeId: Long, minutes: Int, nowMs: Long, today: Long) {
         val entity = nodeDao.getNodeById(nodeId) ?: return
         if (isZeroLength(entity.toPlanNode())) return
         val remaining = maxOf(0, entity.estimatedMinutes - entity.doneMinutes)
+        val done = minOf(minutes, remaining)
         if (minutes >= remaining) {
             nodeDao.updateNode(
                 entity.copy(
@@ -373,6 +402,9 @@ class ProjectRepository @Inject constructor(
         } else {
             markPartDone(nodeId, minutes, nowMs)
         }
+        val log = database.projectDailyLogDao()
+        val existing = log.getForNodeAndDay(nodeId, today)
+        log.upsert(mergeDailyLog(existing, nodeId, today, existing?.plannedMinutes ?: minutes, (existing?.doneMinutes ?: 0) + done))
     }
 
     // Adelantar a hoy (RF-19)
@@ -385,7 +417,10 @@ class ProjectRepository @Inject constructor(
     suspend fun loadPlan(projectId: Long, today: Long): ProjectPlan? {
         val project = projectDao.getProjectById(projectId) ?: return null
         val excluded = projectDao.getExcludedDays(projectId).toSet()
-        val nodes = nodeDao.getNodesSync(projectId).map { it.toPlanNode() }
+        val nodes = buildPlanNodes(
+            nodeDao.getNodesSync(projectId),
+            database.projectDependencyDao().getForProject(projectId)
+        )
         return planProject(project.toPlanConfig(excluded), nodes, today)
     }
 
@@ -394,7 +429,10 @@ class ProjectRepository @Inject constructor(
         val projects = projectDao.getActiveProjectsSync()
         return projects.map { project ->
             val excluded = projectDao.getExcludedDays(project.id).toSet()
-            val nodes = nodeDao.getNodesSync(project.id).map { it.toPlanNode() }
+            val nodes = buildPlanNodes(
+                nodeDao.getNodesSync(project.id),
+                database.projectDependencyDao().getForProject(project.id)
+            )
             Pair(project, planProject(project.toPlanConfig(excluded), nodes, today))
         }
     }
@@ -403,13 +441,173 @@ class ProjectRepository @Inject constructor(
     suspend fun getNodeTitles(projectId: Long): Map<Long, String> =
         nodeDao.getNodesSync(projectId).associate { it.id to it.title }
 
-    // Partes planificadas para un dia concreto, usando el plan completo de cada proyecto activo
-    suspend fun countPlannedPartsOn(day: Long): Int =
-        getActiveProjectPlansSync(day).sumOf { (_, plan) -> todayParts(plan, day).size }
+    // ---------- Dependencias (fase 2a) ----------
 
-    // Partes de ese dia que ya estan completas. Una parte cuenta como hecha si su hoja esta completa.
-    suspend fun countCompletedPartsOn(day: Long): Int =
-        getActiveProjectPlansSync(day).sumOf { (_, plan) ->
-            todayParts(plan, day).count { part -> plan.nodes[part.nodeId]?.completed == true }
+    fun observeDependencies(projectId: Long): Flow<List<ProjectDependencyEntity>> =
+        database.projectDependencyDao().observeForProject(projectId)
+
+    fun observeAllDependencies(): Flow<List<ProjectDependencyEntity>> =
+        database.projectDependencyDao().observeAll()
+
+    // enabled = true: "successorId espera a predecessorId". enabled = false la quita.
+    // Devuelve CYCLE si la relacion crea un ciclo, o si una tarea y su ancestro/descendiente se relacionan.
+    suspend fun setDependency(projectId: Long, predecessorId: Long, successorId: Long, enabled: Boolean): OpResult =
+        database.withTransaction<OpResult> {
+            val dao = database.projectDependencyDao()
+            if (!enabled) {
+                dao.delete(predecessorId, successorId)
+                return@withTransaction OpResult.OK
+            }
+            if (predecessorId == successorId) return@withTransaction OpResult.CYCLE
+            val nodes = nodeDao.getNodesSync(projectId)
+            if (nodes.none { it.id == predecessorId } || nodes.none { it.id == successorId }) {
+                return@withTransaction OpResult.NOT_FOUND
+            }
+            if (subtreeIds(nodes, predecessorId).contains(successorId) ||
+                subtreeIds(nodes, successorId).contains(predecessorId)
+            ) {
+                return@withTransaction OpResult.CYCLE
+            }
+            dao.insert(ProjectDependencyEntity(predecessorId, successorId))
+            val deps = dao.getForProject(projectId)
+            if (orderWork(buildPlanNodes(nodes, deps)) == null) {
+                dao.delete(predecessorId, successorId)
+                return@withTransaction OpResult.CYCLE
+            }
+            OpResult.OK
         }
+
+    // ---------- Edicion directa en el Gantt (fase 2c) ----------
+
+    // Crea una restriccion "no antes de" al mover una barra. Pone la fecha al dia indicado.
+    suspend fun setNotBefore(nodeId: Long, day: Long?): OpResult =
+        database.withTransaction<OpResult> {
+            val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            val nodes = nodeDao.getNodesSync(node.projectId)
+            if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
+            nodeDao.updateNode(node.copy(notBeforeDate = day))
+            OpResult.OK
+        }
+
+    // Cambia la duracion de una hoja (en minutos). Usa resizeLeaf para respetar el progreso.
+    suspend fun setLeafMinutes(nodeId: Long, minutes: Int, nowMs: Long): OpResult =
+        database.withTransaction<OpResult> {
+            val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            val nodes = nodeDao.getNodesSync(node.projectId)
+            if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
+            if (node.isMilestone) return@withTransaction OpResult.INVALID_MINUTES
+            if (minutes < MIN_LEAF_MINUTES) return@withTransaction OpResult.INVALID_MINUTES
+            nodeDao.updateNode(resizeLeaf(node, minutes, nowMs))
+            OpResult.OK
+        }
+
+    // Anade una tarea al final de la raiz (fase 2c, creacion desde cero en el Gantt)
+    suspend fun addRootLeaf(projectId: Long, title: String, nowMs: Long, today: Long): OpResult =
+        database.withTransaction<OpResult> {
+            val draft = NodeDraft(title, null, DEFAULT_LEAF_MINUTES, false, 0, null, null)
+            val check = validateNodeDraft(draft, true)
+            if (check != OpResult.OK) return@withTransaction check
+            val nodes = nodeDao.getNodesSync(projectId)
+            val nextOrder = (childrenOfNode(nodes, null).maxOfOrNull { it.sortOrder } ?: -1) + 1
+            val notBefore = if (nodes.isEmpty()) today else null
+            nodeDao.insertNode(
+                ProjectNodeEntity(
+                    projectId = projectId,
+                    parentId = null,
+                    title = title.trim(),
+                    sortOrder = nextOrder,
+                    estimatedMinutes = DEFAULT_LEAF_MINUTES,
+                    notBeforeDate = notBefore,
+                    createdAt = nowMs
+                )
+            )
+            OpResult.OK
+        }
+
+    // Guarda el plan del dia en el log: minutos planificados por hoja (sin borrar lo ya hecho).
+    suspend fun snapshotPlanForDay(day: Long) {
+        val log = database.projectDailyLogDao()
+        log.deleteUnstartedPlannedForDay(day)
+        for ((project, plan) in getActiveProjectPlansSync(day)) {
+            val partsByNode = todayParts(plan, day).groupBy { it.nodeId }
+            for ((nodeId, parts) in partsByNode) {
+                val planned = parts.sumOf { it.minutes }
+                val existing = log.getForNodeAndDay(nodeId, day)
+                log.upsert(
+                    ProjectDailyLogEntity(
+                        nodeId = nodeId,
+                        epochDay = day,
+                        plannedMinutes = planned,
+                        doneMinutes = existing?.doneMinutes ?: 0
+                    )
+                )
+            }
+        }
+    }
+
+    // Totales de proyectos de un dia cerrado (para DayCloser)
+    suspend fun totalsForClosedDay(day: Long): DayProjectTotals {
+        val logs = database.projectDailyLogDao().getForDay(day)
+        return DayProjectTotals(
+            planned = logs.count { it.plannedMinutes > 0 },
+            done = logs.count { it.plannedMinutes > 0 && it.doneMinutes >= it.plannedMinutes }
+        )
+    }
+
+    // Filas CSV de un proyecto, con dependencias y ruta critica
+    suspend fun exportRows(projectId: Long, today: Long): List<List<String?>> {
+        val project = projectDao.getProjectById(projectId) ?: return emptyList()
+        val excluded = projectDao.getExcludedDays(projectId).toSet()
+        val entities = nodeDao.getNodesSync(projectId)
+        val deps = database.projectDependencyDao().getForProject(projectId)
+        val plan = planProject(project.toPlanConfig(excluded), buildPlanNodes(entities, deps), today)
+        val titles = entities.associate { it.id to it.title }
+        val depsByNode = deps.groupBy({ it.successorId }, { it.predecessorId })
+        val rows = projectCsvRows(entities, plan, titles).toMutableList()
+        val order = preorderNodeIds(entities.map { it.toPlanNode() })
+        val fixed = rows.mapIndexed { index, row ->
+            val id = order[index]
+            val predTitles = depsByNode[id].orEmpty().mapNotNull { titles[it] }.joinToString(";")
+            row.toMutableList().also { it[9] = predTitles }
+        }
+        return fixed
+    }
+
+    // Proyectos completados: id y si terminaron antes o en el deadline
+    suspend fun completedProjectsSummary(today: Long): List<Pair<Boolean, Boolean>> {
+        val all = projectDao.getAllProjectsSync()
+        return all.filter { it.status == ProjectStatus.COMPLETED }.map { project ->
+            val excluded = projectDao.getExcludedDays(project.id).toSet()
+            val nodes = buildPlanNodes(nodeDao.getNodesSync(project.id), database.projectDependencyDao().getForProject(project.id))
+            val plan = planProject(project.toPlanConfig(excluded), nodes, today)
+            val end = plan.expectedEndDay
+            val deadline = project.deadlineDate
+            val beforeDeadline = deadline != null && end != null && end <= deadline
+            Pair(true, beforeDeadline)
+        }
+    }
+
+    // Nodos de un proyecto para calcular la desviacion (fase 2e)
+    suspend fun getNodesForDeviation(projectId: Long): List<ProjectNodeEntity> = nodeDao.getNodesSync(projectId)
+
+    suspend fun getActiveProjectsOnce(): List<ProjectEntity> = projectDao.getActiveProjectsSync()
+
+    // Suma minutos de enfoque al progreso de una hoja, y los registra en el log del dia.
+    // No marca la hoja como completa por si sola: solo acumula tiempo trabajado.
+    suspend fun recordFocusMinutes(nodeId: Long, day: Long, minutes: Int, nowMs: Long) {
+        val entity = nodeDao.getNodeById(nodeId) ?: return
+        if (isZeroLength(entity.toPlanNode())) return
+        markPartDone(nodeId, minutes, nowMs)
+        val log = database.projectDailyLogDao()
+        val existing = log.getForNodeAndDay(nodeId, day)
+        log.upsert(
+            mergeDailyLog(
+                existing,
+                nodeId,
+                day,
+                existing?.plannedMinutes ?: 0,
+                (existing?.doneMinutes ?: 0) + minutes
+            )
+        )
+    }
 }

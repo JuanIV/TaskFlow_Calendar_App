@@ -25,6 +25,10 @@ private class PlanTree(nodes: List<PlanNode>) {
     fun childrenOf(id: Long): List<PlanNode> = children[id].orEmpty()
 }
 
+// Orden de ejecucion de las hojas y milestones. preds = predecesores efectivos (solo nodos de trabajo).
+// Resultado de ordenar el trabajo. null en orderWork = ciclo de dependencias.
+class WorkOrder(val order: List<PlanNode>, val preds: Map<Long, Set<Long>>)
+
 fun dayBitOf(day: Long): Int = 1 shl (LocalDate.ofEpochDay(day).dayOfWeek.value - 1)
 
 fun isWorkingDay(day: Long, config: PlanConfig): Boolean =
@@ -83,7 +87,7 @@ fun preorderNodeIds(nodes: List<PlanNode>): List<Long> {
     return out
 }
 
-// Orden de ejecucion: solo hojas y milestones, en preorden
+// Orden de preorden de hojas y milestones
 private fun workSequence(tree: PlanTree): List<PlanNode> {
     val out = ArrayList<PlanNode>()
     fun visit(list: List<PlanNode>) {
@@ -102,6 +106,13 @@ private fun leavesUnder(tree: PlanTree, id: Long): List<PlanNode> {
     return tree.childrenOf(id).flatMap { leavesUnder(tree, it.id) }
 }
 
+// Todos los nodos de trabajo (hojas y milestones) de un subarbol, o la propia hoja
+private fun workNodesUnder(tree: PlanTree, id: Long): List<PlanNode> {
+    val node = tree.byId[id] ?: return emptyList()
+    if (!tree.isGroup(id)) return listOf(node)
+    return tree.childrenOf(id).flatMap { workNodesUnder(tree, it.id) }
+}
+
 private fun isDoneNode(tree: PlanTree, id: Long): Boolean {
     val node = tree.byId[id] ?: return true
     if (!tree.isGroup(id)) return isEffectivelyDone(node)
@@ -118,6 +129,48 @@ private fun progressOf(leaves: List<PlanNode>, fallbackDone: Boolean): Int {
         done += if (isEffectivelyDone(n)) n.estimatedMinutes else minOf(n.doneMinutes, n.estimatedMinutes)
     }
     return ((done * 100 + total / 2) / total).toInt()
+}
+
+// Ordena el trabajo respetando dependencias. Entre los nodos listos, gana el primero en orden de lista.
+// Devuelve null si hay ciclo.
+fun orderWork(nodes: List<PlanNode>): WorkOrder? {
+    val tree = PlanTree(nodes)
+    val sequence = workSequence(tree)
+    val index = HashMap<Long, Int>()
+    sequence.forEachIndexed { i, n -> index[n.id] = i }
+
+    // Predecesores efectivos: los propios y los de sus ancestros, expandidos a nodos de trabajo
+    val preds = HashMap<Long, Set<Long>>()
+    for (n in sequence) {
+        val set = HashSet<Long>()
+        var cur: PlanNode? = n
+        while (cur != null) {
+            for (p in cur.predecessors) {
+                for (w in workNodesUnder(tree, p)) {
+                    if (w.id != n.id) set.add(w.id)
+                }
+            }
+            cur = cur.parentId?.let { tree.byId[it] }
+        }
+        preds[n.id] = set
+    }
+
+    val pending = LinkedHashSet<Long>()
+    for (n in sequence) {
+        if (!isEffectivelyDone(n)) pending.add(n.id)
+    }
+    val order = ArrayList<PlanNode>()
+    while (pending.isNotEmpty()) {
+        var best: Long? = null
+        for (id in pending) {
+            val ready = preds[id].orEmpty().none { pending.contains(it) }
+            if (ready && (best == null || index.getValue(id) < index.getValue(best))) best = id
+        }
+        val chosen = best ?: return null
+        order.add(tree.byId.getValue(chosen))
+        pending.remove(chosen)
+    }
+    return WorkOrder(order, preds)
 }
 
 // Reparte la secuencia en dias laborables a partir de start.
@@ -198,16 +251,55 @@ private fun allocateAll(sequence: List<PlanNode>, config: PlanConfig, start: Lon
     }
 }
 
+// Camino critico: desde el nodo que termina ultimo, retrocede por el predecesor que termina mas tarde
+// (el anterior en ejecucion o una dependencia). Se para si el inicio viene de una restriccion "no antes de".
+private fun criticalChain(
+    order: List<PlanNode>,
+    preds: Map<Long, Set<Long>>,
+    schedules: Map<Long, NodeSchedule>,
+    byId: Map<Long, PlanNode>
+): Set<Long> {
+    val ended = order.filter { schedules[it.id]?.endDay != null }
+    if (ended.isEmpty()) return emptySet()
+    val maxEnd = ended.maxOf { schedules.getValue(it.id).endDay!! }
+    var current: PlanNode = ended.last { schedules.getValue(it.id).endDay == maxEnd }
+    val pos = HashMap<Long, Int>()
+    order.forEachIndexed { i, n -> pos[n.id] = i }
+    val out = HashSet<Long>()
+    while (true) {
+        out.add(current.id)
+        val start = schedules.getValue(current.id).startDay
+        if (current.notBeforeDate != null && start == current.notBeforeDate) break
+        val candidates = ArrayList<PlanNode>()
+        val prev = (pos[current.id] ?: 0) - 1
+        if (prev >= 0) candidates.add(order[prev])
+        preds[current.id].orEmpty().forEach { pid ->
+            val p = byId[pid]
+            if (p != null) candidates.add(p)
+        }
+        val next = candidates
+            .filter { schedules[it.id]?.endDay != null }
+            .maxByOrNull { schedules.getValue(it.id).endDay!! }
+            ?: break
+        if (out.contains(next.id)) break
+        current = next
+    }
+    return out
+}
+
 // Calcula el plan completo del proyecto desde max(startDate, today)
 fun planProject(config: PlanConfig, nodes: List<PlanNode>, today: Long): ProjectPlan {
     val tree = PlanTree(nodes)
+    val workOrder: WorkOrder? = orderWork(nodes)
+    val cyclic = workOrder == null
+    val orderedNodes: List<PlanNode> = workOrder?.order ?: emptyList()
     val sequence = workSequence(tree)
     val remainingTotal = sequence.sumOf { remainingMinutesOf(it).toLong() }
     val capacity = config.dailyCapacityMinutes
     val start = maxOf(config.startDate, today)
-    val canSchedule = !config.paused && remainingTotal > 0L && capacity > 0 &&
+    val canSchedule = !config.paused && !cyclic && remainingTotal > 0L && capacity > 0 &&
         (config.workingDaysMask and 127) != 0
-    val allocation: Allocation? = if (canSchedule) allocateAll(sequence, config, start, today) else null
+    val allocation: Allocation? = if (canSchedule) allocateAll(orderedNodes, config, start, today) else null
 
     val segs = allocation?.segments ?: emptyList()
     val zeroDates: Map<Long, Long> = allocation?.zeroDates ?: emptyMap()
@@ -258,6 +350,12 @@ fun planProject(config: PlanConfig, nodes: List<PlanNode>, today: Long): Project
     }
     val nodeMap: Map<Long, NodeSchedule> = nodes.associate { it.id to scheduleOf(it.id) }
 
+    val critical: Set<Long> = if (workOrder == null || allocation == null) {
+        emptySet()
+    } else {
+        criticalChain(orderedNodes, workOrder.preds, nodeMap, tree.byId)
+    }
+
     val expectedEnd: Long? = (parts.map { it.day } + zeroDates.values).maxOrNull()
     val allWorkLeaves = sequence.filter { !isZeroLength(it) }
     val projectDone = tree.roots.isNotEmpty() && tree.roots.all { isDoneNode(tree, it.id) }
@@ -269,6 +367,10 @@ fun planProject(config: PlanConfig, nodes: List<PlanNode>, today: Long): Project
     val overdueDays: Int
     if (config.paused) {
         status = PlanStatus.PAUSADO
+        marginDays = null
+        overdueDays = 0
+    } else if (cyclic) {
+        status = PlanStatus.CICLO
         marginDays = null
         overdueDays = 0
     } else if (remainingTotal == 0L) {
@@ -299,23 +401,26 @@ fun planProject(config: PlanConfig, nodes: List<PlanNode>, today: Long): Project
         progressPercent = projectProgress,
         remainingMinutes = remainingTotal.toInt(),
         nodes = nodeMap,
-        parts = parts
+        parts = parts,
+        executionOrder = orderedNodes.map { it.id },
+        criticalNodeIds = critical
     )
 }
 
-// Candidata a adelantar: primera hoja pendiente que el plan pone en un dia futuro,
-// solo si hoy queda capacidad libre. Devuelve null si no hay.
+// Candidata a adelantar: primera hoja pendiente que el plan pone en un dia futuro, cuyos
+// predecesores estan todos completos, solo si hoy queda capacidad libre. Devuelve null si no hay.
 fun findPullCandidate(config: PlanConfig, nodes: List<PlanNode>, today: Long): Long? {
     if (config.paused || config.startDate > today) return null
-    val tree = PlanTree(nodes)
-    val sequence = workSequence(tree)
+    val work = orderWork(nodes) ?: return null
     val plan = planProject(config, nodes, today)
     val spare = config.dailyCapacityMinutes - plan.parts.filter { it.day == today }.sumOf { it.minutes }
     if (spare <= 0) return null
-    return sequence.firstOrNull { n ->
+    val doneIds = nodes.filter { isEffectivelyDone(it) }.map { it.id }.toSet()
+    return work.order.firstOrNull { n ->
         !isZeroLength(n) &&
             remainingMinutesOf(n) > 0 &&
             n.pulledForwardDay != today &&
-            (plan.nodes[n.id]?.startDay ?: -1L) > today
+            (plan.nodes[n.id]?.startDay ?: -1L) > today &&
+            work.preds[n.id].orEmpty().all { it in doneIds }
     }?.id
 }

@@ -183,7 +183,11 @@ fun TasksScreen(
                 if (projectItems.isNotEmpty()) {
                     item(key = "hdr_projects") { SectionHeader(stringResource(R.string.p1d_section_projects), MaterialTheme.colorScheme.primary) }
                     items(projectItems, key = { "p${it.projectId}_${it.nodeId}_${it.partIndex}" }) { item ->
-                        ProjectTodayRow(item = item, onComplete = { projectToday.completePart(item) })
+                        ProjectTodayRow(
+                            item = item,
+                            onComplete = { projectToday.completePart(item) },
+                            onFocus = { projectToday.startFocus(item) }
+                        )
                     }
                 }
                 if (todayList.isNotEmpty()) {
@@ -295,7 +299,11 @@ private fun SectionHeader(text: String, color: Color) {
 }
 
 @Composable
-private fun ProjectTodayRow(item: com.example.taskflow.domain.ProjectTodayItem, onComplete: () -> Unit) {
+private fun ProjectTodayRow(
+    item: com.example.taskflow.domain.ProjectTodayItem,
+    onComplete: () -> Unit,
+    onFocus: () -> Unit
+) {
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.padding(8.dp),
@@ -308,6 +316,12 @@ private fun ProjectTodayRow(item: com.example.taskflow.domain.ProjectTodayItem, 
                     com.example.taskflow.domain.formatHours(item.minutes) + " h",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(onClick = onFocus) {
+                Icon(
+                    androidx.compose.material.icons.Icons.Default.Timer,
+                    contentDescription = stringResource(R.string.p2d_focus_action)
                 )
             }
         }

@@ -1,6 +1,8 @@
 package com.example.taskflow.ui.projects
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -18,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +32,7 @@ import com.example.taskflow.domain.ListRow
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanStatus
 import com.example.taskflow.domain.ProjectStatus
+import com.example.taskflow.domain.buildCsv
 import com.example.taskflow.domain.buildListRows
 import com.example.taskflow.domain.formatHours
 import com.example.taskflow.domain.hasChildren
@@ -65,6 +70,7 @@ private fun filterLabelRes(filter: ListFilter): Int = when (filter) {
 @Composable
 fun ProjectDetailScreen(
     onBack: () -> Unit,
+    onOpenGantt: (Long) -> Unit = {},
     viewModel: ProjectDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -74,6 +80,8 @@ fun ProjectDetailScreen(
     val excluded by viewModel.excludedDays.collectAsState()
     val today by viewModel.today.collectAsState()
     val pullCandidate by viewModel.pullCandidate.collectAsState()
+    val dependencies by viewModel.dependencies.collectAsState()
+    val deviation by viewModel.deviation.collectAsState()
 
     var filterName by rememberSaveable { mutableStateOf(ListFilter.ALL.name) }
     var collapsed by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -87,6 +95,30 @@ fun ProjectDetailScreen(
     var editingNode by remember { mutableStateOf<ProjectNodeEntity?>(null) }
     var deletingNodeId by remember { mutableStateOf<Long?>(null) }
     var movingNodeId by remember { mutableStateOf<Long?>(null) }
+    var depNodeId by remember { mutableStateOf<Long?>(null) }
+    var exportRequested by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val rows = viewModel.exportRows()
+                val header = listOf(
+                    "proyecto", "nivel", "titulo", "tipo", "duracion_h", "progreso_pct",
+                    "inicio", "fin", "completado", "predecesores", "critico"
+                )
+                val name = viewModel.project.value?.name ?: ""
+                val body = buildCsv(header, rows.map { listOf(name) + it.drop(1) })
+                context.contentResolver.openOutputStream(uri)?.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                Toast.makeText(context, context.getString(R.string.p2d_export_ok), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    if (exportRequested) {
+        exportRequested = false
+        csvLauncher.launch((project?.name ?: "proyecto") + ".csv")
+    }
 
     val currentProject = project
     val currentPlan = plan
@@ -120,6 +152,9 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onOpenGantt(viewModel.projectId) }) {
+                        Icon(Icons.Default.Timeline, contentDescription = stringResource(R.string.p2b_open_gantt))
+                    }
                     IconButton(onClick = { showEditProject = true }) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.s2_edit))
                     }
@@ -144,6 +179,10 @@ fun ProjectDetailScreen(
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.p1c_action_duplicate_template)) },
                                 onClick = { menuExpanded = false; duplicateAsTemplate = true; showDuplicate = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.p2d_export_csv)) },
+                                onClick = { menuExpanded = false; exportRequested = true }
                             )
                             DropdownMenuItem(
                                 text = {
@@ -187,6 +226,16 @@ fun ProjectDetailScreen(
                         }
                     )
                     Text(stringResource(R.string.p1c_remaining, formatHours(currentPlan.remainingMinutes)))
+                    val dev = deviation
+                    if (dev != null && dev.sampleCount > 0) {
+                        Text(
+                            stringResource(
+                                R.string.p2e_deviation,
+                                com.example.taskflow.domain.formatDeviation(dev.deviationPercent),
+                                dev.sampleCount
+                            )
+                        )
+                    }
                     if (todayText != null) {
                         Text(
                             stringResource(R.string.p1c_today_prefix, todayText),
@@ -235,6 +284,7 @@ fun ProjectDetailScreen(
                             onAddChild = { newNodeParent = row.nodeId; showNewNode = true },
                             onEdit = { editingNode = nodes.firstOrNull { it.id == row.nodeId } },
                             onMove = { movingNodeId = row.nodeId },
+                            onDependencies = { depNodeId = row.nodeId },
                             onDelete = { deletingNodeId = row.nodeId },
                             onUp = { viewModel.moveSibling(row.nodeId, -1) { result -> showOpResult(context, result) } },
                             onDown = { viewModel.moveSibling(row.nodeId, 1) { result -> showOpResult(context, result) } }
@@ -348,6 +398,26 @@ fun ProjectDetailScreen(
             }
         )
     }
+
+    val depNode = depNodeId
+    val depSuccessor = if (depNode == null) null else nodes.firstOrNull { it.id == depNode }
+    if (depSuccessor != null) {
+        DependencyDialog(
+            successor = depSuccessor,
+            nodes = nodes,
+            dependencies = dependencies,
+            onToggle = { predecessorId, enabled ->
+                viewModel.setDependency(predecessorId, depSuccessor.id, enabled) { result ->
+                    if (result == OpResult.CYCLE) {
+                        Toast.makeText(context, context.getString(R.string.p2a_err_dep_cycle), Toast.LENGTH_SHORT).show()
+                    } else {
+                        showOpResult(context, result)
+                    }
+                }
+            },
+            onDismiss = { depNodeId = null }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -359,6 +429,7 @@ private fun ListRowView(
     onAddChild: () -> Unit,
     onEdit: () -> Unit,
     onMove: () -> Unit,
+    onDependencies: () -> Unit,
     onDelete: () -> Unit,
     onUp: () -> Unit,
     onDown: () -> Unit
@@ -377,7 +448,8 @@ private fun ListRowView(
         null
     }
     val milestoneText = if (row.isMilestone) stringResource(R.string.p1c_milestone_label) else null
-    val subtitleParts = listOfNotNull(milestoneText, durationText, datesText)
+    val criticalText = if (row.critical) stringResource(R.string.p2a_critical) else null
+    val subtitleParts = listOfNotNull(milestoneText, criticalText, durationText, datesText)
     val todayLabel = row.todayLabel
 
     Row(
@@ -447,6 +519,10 @@ private fun ListRowView(
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.p1c_action_move)) },
                     onClick = { menuExpanded = false; onMove() }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.p2a_action_deps)) },
+                    onClick = { menuExpanded = false; onDependencies() }
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.p1c_action_up)) },

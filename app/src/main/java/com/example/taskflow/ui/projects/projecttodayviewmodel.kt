@@ -13,13 +13,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ProjectTodayViewModel @Inject constructor(
     private val repository: ProjectRepository,
-    private val settingsRepo: SettingsRepository
+    private val settingsRepo: SettingsRepository,
+    private val focusManager: com.example.taskflow.focus.FocusManager
 ) : ViewModel() {
 
     private val _items = MutableStateFlow<List<ProjectTodayItem>>(emptyList())
@@ -41,8 +43,17 @@ class ProjectTodayViewModel @Inject constructor(
     // Completa la parte indicada y recalcula
     fun completePart(item: ProjectTodayItem) {
         viewModelScope.launch {
-            repository.completeTodayPart(item.nodeId, item.minutes, System.currentTimeMillis())
+            val today = logicalDateNow(settingsRepo.getDayStartHourSync())
+            repository.completeTodayPart(item.nodeId, item.minutes, System.currentTimeMillis(), today)
             refresh()
+        }
+    }
+
+    // Arranca un enfoque de 25 minutos ligado a la hoja de hoy (fase 2e)
+    fun startFocus(item: ProjectTodayItem) {
+        viewModelScope.launch {
+            val minutes = settingsRepo.pomodoroFocusFlow.first()
+            focusManager.startForProjectNode(item.nodeId, minutes)
         }
     }
 
