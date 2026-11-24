@@ -78,6 +78,8 @@ class DayCloser @Inject constructor(
         val firstDay = maxOf(lastClosed + 1, targetEpochDay - 400)
         for (day in firstDay..targetEpochDay) {
             database.withTransaction {
+                // Nota: el snapshot retroactivo para dias pasados es una aproximacion;
+                // la fuente fiable es la escritura directa en completeTodayPart y recordFocusMinutes.
                 projectRepository.snapshotPlanForDay(day)
                 closeDay(day, routines)
             }

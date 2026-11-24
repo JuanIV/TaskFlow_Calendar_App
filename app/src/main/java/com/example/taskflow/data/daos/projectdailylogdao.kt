@@ -19,4 +19,7 @@ interface ProjectDailyLogDao {
 
     @Query("SELECT * FROM project_daily_log WHERE epochDay >= :from AND epochDay <= :to")
     suspend fun getBetween(from: Long, to: Long): List<ProjectDailyLogEntity>
+
+    @Query("DELETE FROM project_daily_log WHERE epochDay = :day AND plannedMinutes > 0 AND doneMinutes = 0")
+    suspend fun deleteUnstartedPlannedForDay(day: Long)
 }

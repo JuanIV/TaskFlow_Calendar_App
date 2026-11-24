@@ -7,11 +7,11 @@ import com.example.taskflow.data.entities.EventExceptionEntity
 import com.example.taskflow.data.entities.EventReminderEntity
 import com.example.taskflow.domain.EventOccurrence
 import com.example.taskflow.domain.expandEvents
+import com.example.taskflow.domain.planProject
 import com.example.taskflow.domain.projectCalendarItems
 import com.example.taskflow.devicecalendar.ExternalCalendarRepository
 import com.example.taskflow.data.repositories.ProjectRepository
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import com.example.taskflow.scheduling.SchedulingCoordinator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -37,42 +37,61 @@ class EventRepository @Inject constructor(
             projectOccurrences(fromEpoch, toEpoch)
         ) { own, external, projectItems -> own + external + projectItems }
 
-    // Deadlines e hitos de proyectos como EventOccurrence de solo lectura (eventId negativo)
-    private fun projectOccurrences(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> = flow {
-        val list = ArrayList<EventOccurrence>()
-        var key = -1_000_000L
-        for ((project, plan) in projectRepository.getActiveProjectPlansSync(fromEpoch)) {
-            val nodes = projectRepository.getNodes(project.id)
-            val milestones = nodes
-                .filter { it.isMilestone }
-                .mapNotNull { m -> plan.nodes[m.id]?.startDay?.let { Pair(m.title, it) } }
-                .filter { it.second in fromEpoch..toEpoch }
-            for (item in projectCalendarItems(project.name, project.deadlineDate, milestones)) {
-                if (item.day !in fromEpoch..toEpoch) continue
-                key -= 1
-                list.add(
-                    EventOccurrence(
-                        eventId = key,
-                        originalDate = item.day,
-                        startDate = item.day,
-                        endDate = null,
-                        allDay = true,
-                        startMinute = null,
-                        endMinute = null,
-                        title = item.title,
-                        colorArgb = item.colorArgb,
-                        notes = null,
-                        location = null,
-                        isException = false,
-                        priority = "IMPORTANT",
-                        icon = null,
-                        external = true
-                    )
+    // Deadlines e hitos de proyectos como EventOccurrence de solo lectura (eventId negativo con IDs estables)
+    // Limitacion: se asume que un proyecto tiene menos de 1000 hitos (index < 1000).
+    private fun projectOccurrences(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> =
+        combine(
+            projectRepository.observeActiveProjects(),
+            projectRepository.observeAllNodes(),
+            projectRepository.observeAllDependencies(),
+            projectRepository.observeAllExcludedDays()
+        ) { projects, allNodes, allDeps, allExcluded ->
+            val list = ArrayList<EventOccurrence>()
+            val nodesByProject = allNodes.groupBy { it.projectId }
+            val depsByProject = allDeps.groupBy { dep -> allNodes.firstOrNull { it.id == dep.successorId }?.projectId ?: -1L }
+            val excludedByProject = allExcluded.groupBy { it.projectId }.mapValues { entry -> entry.value.map { it.epochDay }.toSet() }
+
+            for (project in projects) {
+                val pNodes = nodesByProject[project.id].orEmpty()
+                val pDeps = depsByProject[project.id].orEmpty()
+                val excluded = excludedByProject[project.id].orEmpty()
+                val planNodes = buildPlanNodes(pNodes, pDeps)
+                val config = project.toPlanConfig(excluded)
+                val plan = planProject(config, planNodes, fromEpoch)
+
+                val items = projectCalendarItems(
+                    project.name,
+                    project.deadlineDate,
+                    pNodes.filter { it.isMilestone }.mapNotNull { m -> plan.nodes[m.id]?.startDay?.let { Pair(m.title, it) } }
                 )
+
+                items.forEachIndexed { index, item ->
+                    if (item.day in fromEpoch..toEpoch) {
+                        val stableId = -(project.id * 1000L + index + 1L)
+                        list.add(
+                            EventOccurrence(
+                                eventId = stableId,
+                                originalDate = item.day,
+                                startDate = item.day,
+                                endDate = null,
+                                allDay = true,
+                                startMinute = null,
+                                endMinute = null,
+                                title = item.title,
+                                colorArgb = item.colorArgb,
+                                notes = null,
+                                location = null,
+                                isException = false,
+                                priority = "IMPORTANT",
+                                icon = null,
+                                external = true
+                            )
+                        )
+                    }
+                }
             }
+            list
         }
-        emit(list)
-    }
     private fun getOwnExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> {
         val searchFrom = fromEpoch - 365
         return eventDao.getActiveEventsFrom(searchFrom).flatMapLatest { events ->

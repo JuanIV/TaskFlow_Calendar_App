@@ -527,6 +527,7 @@ class ProjectRepository @Inject constructor(
     // Guarda el plan del dia en el log: minutos planificados por hoja (sin borrar lo ya hecho).
     suspend fun snapshotPlanForDay(day: Long) {
         val log = database.projectDailyLogDao()
+        log.deleteUnstartedPlannedForDay(day)
         for ((project, plan) in getActiveProjectPlansSync(day)) {
             val partsByNode = todayParts(plan, day).groupBy { it.nodeId }
             for ((nodeId, parts) in partsByNode) {
