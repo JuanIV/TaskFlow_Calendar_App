@@ -124,6 +124,7 @@ class SettingsRepository @Inject constructor(
     private val FOCUS_START = longPreferencesKey("focus_start")
     private val FOCUS_END = longPreferencesKey("focus_end")
     private val FOCUS_CYCLE = intPreferencesKey("focus_cycle")
+    private val FOCUS_PROJECT_NODE = longPreferencesKey("focus_project_node")
     private val EXT_ENABLED = booleanPreferencesKey("ext_calendar_enabled")
     private val EXT_IDS = stringSetPreferencesKey("ext_calendar_ids")
     private val ACHIEVEMENTS = stringSetPreferencesKey("achievements_unlocked")
@@ -157,7 +158,8 @@ class SettingsRepository @Inject constructor(
             taskId = (p[FOCUS_TASK] ?: -1L).takeIf { it > 0L },
             startMs = p[FOCUS_START] ?: 0L,
             endMs = p[FOCUS_END] ?: 0L,
-            cycle = p[FOCUS_CYCLE] ?: 0
+            cycle = p[FOCUS_CYCLE] ?: 0,
+            projectNodeId = (p[FOCUS_PROJECT_NODE] ?: -1L).takeIf { it > 0L }
         )
     }
     val extCalendarEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[EXT_ENABLED] ?: false }
@@ -198,6 +200,7 @@ class SettingsRepository @Inject constructor(
             it[FOCUS_START] = state.startMs
             it[FOCUS_END] = state.endMs
             it[FOCUS_CYCLE] = state.cycle
+            it[FOCUS_PROJECT_NODE] = state.projectNodeId ?: -1L
         }
     }
     suspend fun setExtCalendars(enabled: Boolean, ids: Set<Long>) {

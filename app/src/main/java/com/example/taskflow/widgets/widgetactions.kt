@@ -9,6 +9,7 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.example.taskflow.capture.CaptureContract
+import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.mainactivity
 import com.example.taskflow.scheduling.AlarmContract
 
@@ -110,7 +111,10 @@ class CompleteProjectPartCallback : ActionCallback {
         val nodeId = parameters[WidgetKeys.TaskId] ?: return
         val minutes = parameters[WidgetKeys.Delta] ?: return
         val entry = widgetEntryPoint(context)
-        try { entry.projectRepository().completeTodayPart(nodeId, minutes, System.currentTimeMillis()) } catch (e: Exception) { }
+        try {
+            val today = logicalDateNow(entry.settingsRepo().getDayStartHourSync())
+            entry.projectRepository().completeTodayPart(nodeId, minutes, System.currentTimeMillis(), today)
+        } catch (e: Exception) { }
         try { entry.widgetUpdater().updateAll() } catch (e: Exception) { }
         try { entry.coordinator().refreshNotifications() } catch (e: Exception) { }
     }

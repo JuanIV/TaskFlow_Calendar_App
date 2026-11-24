@@ -59,6 +59,9 @@ class ProjectDetailViewModel @Inject constructor(
     private val _pullCandidate = MutableStateFlow<Long?>(null)
     val pullCandidate: StateFlow<Long?> = _pullCandidate.asStateFlow()
 
+    private val _deviation = MutableStateFlow<com.example.taskflow.domain.DeviationSummary?>(null)
+    val deviation: StateFlow<com.example.taskflow.domain.DeviationSummary?> = _deviation.asStateFlow()
+
     private fun now(): Long = System.currentTimeMillis()
 
     private suspend fun refreshAll(
@@ -80,6 +83,7 @@ class ProjectDetailViewModel @Inject constructor(
                 today
             )
         }
+        _deviation.value = com.example.taskflow.domain.deviationSummary(currentNodes)
     }
 
     private fun launchResult(onResult: (OpResult) -> Unit, block: suspend () -> OpResult) {
@@ -164,6 +168,9 @@ class ProjectDetailViewModel @Inject constructor(
         launchResult(onResult) {
             repository.setDependency(projectId, predecessorId, successorId, enabled)
         }
+
+    // Filas para exportar a CSV. Se llama desde la pantalla al pulsar Exportar.
+    suspend fun exportRows(): List<List<String?>> = repository.exportRows(projectId, _today.value)
 
     // Cada cambio del proyecto, de sus nodos o de sus dependencias recalcula el plan.
     init {

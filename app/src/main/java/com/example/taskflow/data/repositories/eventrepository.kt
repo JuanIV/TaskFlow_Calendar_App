@@ -7,8 +7,11 @@ import com.example.taskflow.data.entities.EventExceptionEntity
 import com.example.taskflow.data.entities.EventReminderEntity
 import com.example.taskflow.domain.EventOccurrence
 import com.example.taskflow.domain.expandEvents
+import com.example.taskflow.domain.projectCalendarItems
 import com.example.taskflow.devicecalendar.ExternalCalendarRepository
+import com.example.taskflow.data.repositories.ProjectRepository
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import com.example.taskflow.scheduling.SchedulingCoordinator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -24,10 +27,52 @@ class EventRepository @Inject constructor(
     private val eventDao: EventDao,
     private val exceptionDao: EventExceptionDao,
     private val externalRepo: ExternalCalendarRepository,
-    private val coordinator: SchedulingCoordinator
+    private val coordinator: SchedulingCoordinator,
+    private val projectRepository: ProjectRepository
 ) {
     fun getExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> =
-        combine(getOwnExpandedEvents(fromEpoch, toEpoch), externalRepo.observe(fromEpoch, toEpoch)) { own, external -> own + external }
+        combine(
+            getOwnExpandedEvents(fromEpoch, toEpoch),
+            externalRepo.observe(fromEpoch, toEpoch),
+            projectOccurrences(fromEpoch, toEpoch)
+        ) { own, external, projectItems -> own + external + projectItems }
+
+    // Deadlines e hitos de proyectos como EventOccurrence de solo lectura (eventId negativo)
+    private fun projectOccurrences(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> = flow {
+        val list = ArrayList<EventOccurrence>()
+        var key = -1_000_000L
+        for ((project, plan) in projectRepository.getActiveProjectPlansSync(fromEpoch)) {
+            val nodes = projectRepository.getNodes(project.id)
+            val milestones = nodes
+                .filter { it.isMilestone }
+                .mapNotNull { m -> plan.nodes[m.id]?.startDay?.let { Pair(m.title, it) } }
+                .filter { it.second in fromEpoch..toEpoch }
+            for (item in projectCalendarItems(project.name, project.deadlineDate, milestones)) {
+                if (item.day !in fromEpoch..toEpoch) continue
+                key -= 1
+                list.add(
+                    EventOccurrence(
+                        eventId = key,
+                        originalDate = item.day,
+                        startDate = item.day,
+                        endDate = null,
+                        allDay = true,
+                        startMinute = null,
+                        endMinute = null,
+                        title = item.title,
+                        colorArgb = item.colorArgb,
+                        notes = null,
+                        location = null,
+                        isException = false,
+                        priority = "IMPORTANT",
+                        icon = null,
+                        external = true
+                    )
+                )
+            }
+        }
+        emit(list)
+    }
     private fun getOwnExpandedEvents(fromEpoch: Long, toEpoch: Long): Flow<List<EventOccurrence>> {
         val searchFrom = fromEpoch - 365
         return eventDao.getActiveEventsFrom(searchFrom).flatMapLatest { events ->

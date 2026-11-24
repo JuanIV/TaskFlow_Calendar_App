@@ -12,6 +12,8 @@ import com.example.taskflow.data.daos.RecordDao
 import com.example.taskflow.data.daos.RoutineDao
 import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.data.repositories.ProjectRepository
+import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.ACHIEVEMENT_DEFS
 import com.example.taskflow.domain.AchievementStats
 import com.example.taskflow.domain.bestStreak
@@ -35,20 +37,26 @@ class AchievementManager @Inject constructor(
     private val routineDao: RoutineDao,
     private val recordDao: RecordDao,
     private val focusLogDao: FocusLogDao,
-    private val settingsRepo: SettingsRepository
+    private val settingsRepo: SettingsRepository,
+    private val projectRepository: ProjectRepository
 ) {
     private val mutex = Mutex()
 
     suspend fun computeStats(): AchievementStats {
         val tasks = taskDao.getAllActiveTasksSync().count { it.parentTaskId == null && it.isCompleted }
         val records = recordDao.getAllDayRecordsSync()
+        val completedProjects = projectRepository.completedProjectsSummary(
+            logicalDateNow(settingsRepo.getDayStartHourSync())
+        )
         return AchievementStats(
             tasksCompleted = tasks,
             bestStreak = bestStreak(dayRecordsToStatuses(records), "PENDING"),
             focusMinutes = focusLogDao.totalFocusMinutes(),
             perfectDays = records.count { it.status == "COMPLETED" },
             routines = routineDao.getAllRoutinesSync().size,
-            events = eventDao.getActiveEventsFromSync(0L).size
+            events = eventDao.getActiveEventsFromSync(0L).size,
+            projects = completedProjects.size,
+            projectsEarly = completedProjects.count { it.second }
         )
     }
 

@@ -9,5 +9,7 @@ data class FocusState(
     val taskId: Long? = null,
     val startMs: Long = 0L,
     val endMs: Long = 0L,
-    val cycle: Int = 0
+    val cycle: Int = 0,
+    // Nodo de proyecto asociado a la sesion (fase 2e), o null
+    val projectNodeId: Long? = null
 )

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -99,6 +100,7 @@ fun ProjectGanttScreen(
     val state by viewModel.state.collectAsState()
     val zoom by viewModel.zoom.collectAsState()
     var fullscreen by remember { mutableStateOf(false) }
+    var shareRequested by remember { mutableStateOf(false) }
     var editingNode by remember { mutableStateOf<ProjectNodeEntity?>(null) }
     var showAddTask by remember { mutableStateOf(false) }
     var addTaskTitle by remember { mutableStateOf("") }
@@ -117,6 +119,15 @@ fun ProjectGanttScreen(
     }
 
     val current = state
+    if (shareRequested) {
+        shareRequested = false
+        val s = state
+        if (s != null) {
+            val file = renderGanttPng(context, s.project.name.replace(' ', '_') + ".png", s.rows, s.range, zoom)
+            sharePng(context, file)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -127,6 +138,9 @@ fun ProjectGanttScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { shareRequested = true }) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.p2d_share_png))
+                    }
                     IconButton(onClick = { fullscreen = !fullscreen }) {
                         Icon(
                             if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,

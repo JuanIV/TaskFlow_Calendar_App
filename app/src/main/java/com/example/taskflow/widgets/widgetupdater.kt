@@ -18,5 +18,6 @@ class WidgetUpdater @Inject constructor(
         try { FocusWidget().updateAll(context) } catch (e: Exception) { }
         try { MonthWidget().updateAll(context) } catch (e: Exception) { }
         try { WeekWidget().updateAll(context) } catch (e: Exception) { }
+        try { ProjectWidget().updateAll(context) } catch (e: Exception) { }
     }
 }

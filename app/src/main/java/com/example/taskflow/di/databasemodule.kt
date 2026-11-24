@@ -33,7 +33,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
-                AppDatabase.MIGRATION_6_7
+                AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8
             )
             .build()
     }
@@ -67,4 +68,8 @@ object DatabaseModule {
 
     @Provides
     fun provideProjectDependencyDao(database: AppDatabase): ProjectDependencyDao = database.projectDependencyDao()
+
+    @Provides
+    fun provideProjectDailyLogDao(database: AppDatabase): com.example.taskflow.data.daos.ProjectDailyLogDao =
+        database.projectDailyLogDao()
 }

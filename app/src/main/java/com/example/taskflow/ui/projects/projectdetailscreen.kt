@@ -1,6 +1,8 @@
 package com.example.taskflow.ui.projects
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,6 +32,7 @@ import com.example.taskflow.domain.ListRow
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanStatus
 import com.example.taskflow.domain.ProjectStatus
+import com.example.taskflow.domain.buildCsv
 import com.example.taskflow.domain.buildListRows
 import com.example.taskflow.domain.formatHours
 import com.example.taskflow.domain.hasChildren
@@ -77,6 +81,7 @@ fun ProjectDetailScreen(
     val today by viewModel.today.collectAsState()
     val pullCandidate by viewModel.pullCandidate.collectAsState()
     val dependencies by viewModel.dependencies.collectAsState()
+    val deviation by viewModel.deviation.collectAsState()
 
     var filterName by rememberSaveable { mutableStateOf(ListFilter.ALL.name) }
     var collapsed by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -91,6 +96,29 @@ fun ProjectDetailScreen(
     var deletingNodeId by remember { mutableStateOf<Long?>(null) }
     var movingNodeId by remember { mutableStateOf<Long?>(null) }
     var depNodeId by remember { mutableStateOf<Long?>(null) }
+    var exportRequested by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val csvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val rows = viewModel.exportRows()
+                val header = listOf(
+                    "proyecto", "nivel", "titulo", "tipo", "duracion_h", "progreso_pct",
+                    "inicio", "fin", "completado", "predecesores", "critico"
+                )
+                val name = viewModel.project.value?.name ?: ""
+                val body = buildCsv(header, rows.map { listOf(name) + it.drop(1) })
+                context.contentResolver.openOutputStream(uri)?.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                Toast.makeText(context, context.getString(R.string.p2d_export_ok), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    if (exportRequested) {
+        exportRequested = false
+        csvLauncher.launch((project?.name ?: "proyecto") + ".csv")
+    }
 
     val currentProject = project
     val currentPlan = plan
@@ -153,6 +181,10 @@ fun ProjectDetailScreen(
                                 onClick = { menuExpanded = false; duplicateAsTemplate = true; showDuplicate = true }
                             )
                             DropdownMenuItem(
+                                text = { Text(stringResource(R.string.p2d_export_csv)) },
+                                onClick = { menuExpanded = false; exportRequested = true }
+                            )
+                            DropdownMenuItem(
                                 text = {
                                     Text(
                                         stringResource(R.string.p1c_action_delete_project),
@@ -194,6 +226,16 @@ fun ProjectDetailScreen(
                         }
                     )
                     Text(stringResource(R.string.p1c_remaining, formatHours(currentPlan.remainingMinutes)))
+                    val dev = deviation
+                    if (dev != null && dev.sampleCount > 0) {
+                        Text(
+                            stringResource(
+                                R.string.p2e_deviation,
+                                com.example.taskflow.domain.formatDeviation(dev.deviationPercent),
+                                dev.sampleCount
+                            )
+                        )
+                    }
                     if (todayText != null) {
                         Text(
                             stringResource(R.string.p1c_today_prefix, todayText),

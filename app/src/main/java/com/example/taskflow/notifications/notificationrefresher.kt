@@ -51,7 +51,8 @@ class NotificationRefresher @Inject constructor(
     private val exceptionDao: EventExceptionDao,
     private val recordDao: RecordDao,
     private val todayState: TodayStateEvaluator,
-    private val settingsRepo: SettingsRepository
+    private val settingsRepo: SettingsRepository,
+    private val projectRepository: com.example.taskflow.data.repositories.ProjectRepository
 ) {
     private companion object {
         const val MAX_ROWS = 5
@@ -423,6 +424,14 @@ class NotificationRefresher @Inject constructor(
             title = context.getString(R.string.s2_summary_morning_title)
             events.take(4).forEach { lines.add(eventLine(it)) }
             lines.add(context.getString(R.string.s2_summary_counts, pendingTasks.size, routinesToday.size))
+            val projectLines = ArrayList<String>()
+            for ((project, plan) in projectRepository.getActiveProjectPlansSync(today)) {
+                val titles = projectRepository.getNodeTitles(project.id)
+                for (item in com.example.taskflow.domain.projectTodayItems(project.id, project.name, plan, titles, today)) {
+                    projectLines.add(item.label)
+                }
+            }
+            projectLines.take(3).forEach { lines.add(it) }
         } else {
             val streak = currentStreak(dayRecordsToStatuses(recordDao.getAllDayRecordsSync()), todayState.globalState(today))
             if (pendingTasks.isNotEmpty() || pendingRoutines.isNotEmpty()) {

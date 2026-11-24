@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p2d_focus_action">Enfocarse en esta tarea</string>
+    <string name="p2d_export_csv">Exportar a CSV</string>
+    <string name="p2d_export_ok">Archivo guardado</string>
+    <string name="p2d_share_png">Compartir Gantt como imagen</string>
+    <string name="p2d_ach_name_project_1">Primer proyecto completado</string>
+    <string name="p2d_ach_name_project_early_1">Entregado antes de tiempo</string>
+    <string name="p2d_ach_d_project">Completa tu primer proyecto</string>
+    <string name="p2d_ach_d_project_early">Termina un proyecto antes de su fecha límite</string>
+</resources>

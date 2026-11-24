@@ -28,6 +28,9 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY createdAt ASC")
     suspend fun getActiveProjectsSync(): List<ProjectEntity>
 
+    @Query("SELECT * FROM projects")
+    suspend fun getAllProjectsSync(): List<ProjectEntity>
+
     @Query("SELECT * FROM projects WHERE deletedAt IS NULL AND isTemplate = 1 ORDER BY createdAt ASC")
     fun getTemplates(): Flow<List<ProjectEntity>>
 

@@ -83,4 +83,20 @@ class MigrationTest {
         db = helper.runMigrationsAndValidate(testDb, 6, true, AppDatabase.MIGRATION_5_6)
         db.close()
     }
+
+    @Test
+    fun migrate6To7() {
+        var db = helper.createDatabase(testDb, 6)
+        db.close()
+        db = helper.runMigrationsAndValidate(testDb, 7, true, AppDatabase.MIGRATION_6_7)
+        db.close()
+    }
+
+    @Test
+    fun migrate7To8() {
+        var db = helper.createDatabase(testDb, 7)
+        db.close()
+        db = helper.runMigrationsAndValidate(testDb, 8, true, AppDatabase.MIGRATION_7_8)
+        db.close()
+    }
 }
