@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.taskflow.R
+import com.example.taskflow.ui.projects.ProjectTodayViewModel
 import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.domain.formatMinute
 import com.example.taskflow.ui.components.CustomDatePickerDialog
@@ -56,6 +57,8 @@ fun TasksScreen(
     val sortMode by viewModel.sortMode.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val projectToday: ProjectTodayViewModel = hiltViewModel()
+    val projectItems by projectToday.items.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var taskEditing by remember { mutableStateOf<TaskEntity?>(null) }
@@ -177,6 +180,12 @@ fun TasksScreen(
                     item(key = "hdr_overdue") { SectionHeader(stringResource(R.string.s2_sec_overdue), MaterialTheme.colorScheme.error) }
                     items(overdue, key = { "o${it.id}" }) { task -> card(task, false, null) }
                 }
+                if (projectItems.isNotEmpty()) {
+                    item(key = "hdr_projects") { SectionHeader(stringResource(R.string.p1d_section_projects), MaterialTheme.colorScheme.primary) }
+                    items(projectItems, key = { "p${it.projectId}_${it.nodeId}_${it.partIndex}" }) { item ->
+                        ProjectTodayRow(item = item, onComplete = { projectToday.completePart(item) })
+                    }
+                }
                 if (todayList.isNotEmpty()) {
                     item(key = "hdr_today") { SectionHeader(stringResource(R.string.s2_sec_today), MaterialTheme.colorScheme.primary) }
                     items(todayList, key = { "t${it.id}" }) { task -> card(task, false, null) }
@@ -283,6 +292,26 @@ private fun SectionHeader(text: String, color: Color) {
         color = color,
         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
     )
+}
+
+@Composable
+private fun ProjectTodayRow(item: com.example.taskflow.domain.ProjectTodayItem, onComplete: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = item.completed, onCheckedChange = { onComplete() })
+            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(item.label, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    com.example.taskflow.domain.formatHours(item.minutes) + " h",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

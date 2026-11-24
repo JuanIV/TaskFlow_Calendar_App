@@ -20,6 +20,8 @@ object NotificationChannels {
     const val ALARMS = "event_alarms"
     const val ACHIEVEMENTS = "achievements"
     const val ALARM_SCREEN = "alarm_screen"
+    const val PROJECT_TODAY = "project_today"
+    const val PROJECT_RISK = "project_risk"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -69,6 +71,13 @@ object NotificationChannels {
                 description = context.getString(R.string.s3_ch_alarm_screen_desc)
                 setSound(null, null)
                 enableVibration(true)
+            },
+            NotificationChannel(PROJECT_TODAY, context.getString(R.string.p1d_ch_today_name), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.p1d_ch_today_desc)
+                setShowBadge(false)
+            },
+            NotificationChannel(PROJECT_RISK, context.getString(R.string.p1d_ch_risk_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.p1d_ch_risk_desc)
             },
             NotificationChannel(ACHIEVEMENTS, context.getString(R.string.s3_ch_achievements_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = context.getString(R.string.s3_ch_achievements_desc)

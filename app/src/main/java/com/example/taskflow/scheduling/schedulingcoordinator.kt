@@ -16,6 +16,7 @@ import com.example.taskflow.domain.nextWeeklyTrigger
 import com.example.taskflow.domain.nextReminderOccurrence
 import com.example.taskflow.domain.routineAppliesOn
 import com.example.taskflow.notifications.NotificationRefresher
+import com.example.taskflow.notifications.ProjectNotifier
 import com.example.taskflow.widgets.WidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,8 @@ class SchedulingCoordinatorImpl @Inject constructor(
     private val alarmScheduler: AlarmScheduler,
     private val notificationRefresher: NotificationRefresher,
     private val widgetUpdater: WidgetUpdater,
-    private val achievementManager: AchievementManager
+    private val achievementManager: AchievementManager,
+    private val projectNotifier: ProjectNotifier
 ) : SchedulingCoordinator {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -63,6 +65,8 @@ class SchedulingCoordinatorImpl @Inject constructor(
 
     override suspend fun refreshNotifications(): Unit = mutex.withLock {
         notificationRefresher.refreshAll()
+        projectNotifier.refreshToday()
+        projectNotifier.checkRisks()
         widgetUpdater.updateAll()
         achievementManager.check()
     }

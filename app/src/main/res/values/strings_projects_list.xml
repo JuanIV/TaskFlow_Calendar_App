@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_projects">Proyectos</string>
+    <string name="p1c_tab_title">Proyectos</string>
+    <string name="p1c_new_project">Nuevo proyecto</string>
+    <string name="p1c_empty">No hay proyectos. Pulsa + para crear uno.</string>
+    <string name="p1c_templates">Plantillas</string>
+    <string name="p1c_no_templates">No hay plantillas guardadas</string>
+    <string name="p1c_create_from_template">Crear desde plantilla</string>
+    <string name="p1c_name_label">Nombre</string>
+    <string name="p1c_save">Guardar</string>
+    <string name="p1c_cancel">Cancelar</string>
+    <string name="p1c_progress">Progreso: %1$d%%</string>
+    <string name="p1c_expected_end">Fin previsto: %1$s</string>
+    <string name="p1c_today_prefix">Hoy: %1$s</string>
+    <string name="p1c_more_count">y %1$d más</string>
+    <string name="p1c_status_paused">En pausa</string>
+    <string name="p1c_status_completed">Completado</string>
+    <string name="p1c_status_archived">Archivado</string>
+    <string name="p1c_status_just">Justo con la fecha límite</string>
+    <string name="p1c_status_no_deadline">Sin fecha límite</string>
+    <string name="p1c_status_done_plan">Nada pendiente</string>
+    <string name="p1c_status_no_capacity">Sin capacidad diaria</string>
+    <plurals name="p1c_margin_days">
+        <item quantity="one">Llegas con %d día de margen</item>
+        <item quantity="other">Llegas con %d días de margen</item>
+    </plurals>
+    <plurals name="p1c_overdue_days">
+        <item quantity="one">Te pasas %d día</item>
+        <item quantity="other">Te pasas %d días</item>
+    </plurals>
+    <string name="p1c_loading">Cargando...</string>
+    <string name="p1c_remaining">Pendiente: %1$s h</string>
+    <string name="p1c_pull_forward">Adelantar tarea de hoy</string>
+    <string name="p1c_milestone_label">Hito</string>
+    <string name="p1c_duration">%1$s h</string>
+    <string name="p1c_dates">%1$s - %2$s</string>
+    <string name="p1c_copy_suffix">%1$s (copia)</string>
+    <string name="p1c_dup_done">Copia creada</string>
+    <string name="p1c_dup_fail">No se pudo crear la copia</string>
+    <string name="p1c_action_edit">Editar</string>
+    <string name="p1c_action_add_child">Añadir subtarea</string>
+    <string name="p1c_action_move">Mover a...</string>
+    <string name="p1c_action_up">Subir</string>
+    <string name="p1c_action_down">Bajar</string>
+    <string name="p1c_action_delete">Borrar</string>
+    <string name="p1c_action_pause">Pausar</string>
+    <string name="p1c_action_resume">Reanudar</string>
+    <string name="p1c_action_complete">Marcar como completado</string>
+    <string name="p1c_action_reopen">Reabrir</string>
+    <string name="p1c_action_reactivate">Reactivar</string>
+    <string name="p1c_action_archive">Archivar</string>
+    <string name="p1c_action_duplicate">Duplicar</string>
+    <string name="p1c_action_duplicate_template">Guardar como plantilla</string>
+    <string name="p1c_action_delete_project">Borrar proyecto</string>
+    <string name="p1c_filter_all">Todas</string>
+    <string name="p1c_filter_pending">Pendientes</string>
+    <string name="p1c_filter_today">Hoy</string>
+    <string name="p1c_filter_late">Atrasadas</string>
+    <string name="p1c_empty_tree">Este proyecto no tiene tareas. Pulsa + para añadir una.</string>
+    <string name="p1c_delete_project_title">Borrar proyecto</string>
+    <string name="p1c_delete_project_msg">El proyecto se moverá a la papelera.</string>
+    <string name="p1c_delete">Borrar</string>
+    <string name="p1c_add_root">Añadir tarea</string>
+</resources>

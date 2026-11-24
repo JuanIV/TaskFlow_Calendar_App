@@ -9,6 +9,8 @@ import com.example.taskflow.data.daos.RecordDao
 import com.example.taskflow.data.daos.RoutineDao
 import com.example.taskflow.data.daos.TaskDao
 import com.example.taskflow.data.daos.TaskReminderDao
+import com.example.taskflow.data.daos.ProjectDao
+import com.example.taskflow.data.daos.ProjectNodeDao
 import com.example.taskflow.data.db.AppDatabase
 import dagger.Module
 import dagger.Provides
@@ -28,7 +30,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_1_2,
                 AppDatabase.MIGRATION_2_3,
                 AppDatabase.MIGRATION_3_4,
-                AppDatabase.MIGRATION_4_5
+                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_5_6
             )
             .build()
     }
@@ -53,4 +56,10 @@ object DatabaseModule {
 
     @Provides
     fun provideFocusLogDao(database: AppDatabase): FocusLogDao = database.focusLogDao()
+
+    @Provides
+    fun provideProjectDao(database: AppDatabase): ProjectDao = database.projectDao()
+
+    @Provides
+    fun provideProjectNodeDao(database: AppDatabase): ProjectNodeDao = database.projectNodeDao()
 }

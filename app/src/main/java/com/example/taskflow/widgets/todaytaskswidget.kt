@@ -37,12 +37,14 @@ import androidx.glance.text.TextStyle
 import com.example.taskflow.R
 import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.domain.logicalDateNow
+import com.example.taskflow.domain.projectTodayItems
+import com.example.taskflow.domain.ProjectTodayItem
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class TodayRow(val id: Long, val label: String, val completed: Boolean)
+private data class TodayRow(val id: Long, val label: String, val completed: Boolean, val projectNodeId: Long?, val projectMinutes: Int, val projectId: Long?)
 private data class TodayData(val header: String, val today: Long, val pending: Int, val rows: List<TodayRow>)
 
 private suspend fun loadTodayData(context: Context, showDone: Boolean, showOverdue: Boolean, maxRows: Int): TodayData {
@@ -56,16 +58,26 @@ private suspend fun loadTodayData(context: Context, showDone: Boolean, showOverd
         (isToday || isOverdue) && (showDone || !task.isCompleted)
     }.sortedWith(compareBy<TaskEntity> { it.isCompleted }.thenByDescending { it.priority }.thenBy { it.sortOrder })
 
-    val rows = visible.take(maxRows).map { task ->
+    val repo = entry.projectRepository()
+    val projectRows = ArrayList<TodayRow>()
+    for ((project, plan) in repo.getActiveProjectPlansSync(today)) {
+        val titles = repo.getNodeTitles(project.id)
+        for (item in projectTodayItems(project.id, project.name, plan, titles, today)) {
+            projectRows.add(TodayRow(-1L, item.label, false, item.nodeId, item.minutes, project.id))
+        }
+    }
+
+    val rows = (visible.take(maxRows).map { task ->
         val subs = entry.taskDao().getSubtasksForTaskSync(task.id)
         val counter = if (subs.isNotEmpty()) " (" + subs.count { it.isCompleted } + "/" + subs.size + ")" else ""
         val d = task.date
         val prefix = if (d != null && d < today) context.getString(R.string.s2_overdue_prefix) else ""
-        TodayRow(task.id, prefix + task.title + counter, task.isCompleted)
-    }
+        TodayRow(task.id, prefix + task.title + counter, task.isCompleted, null, 0, null)
+    } + projectRows).take(maxRows + projectRows.size)
+
     val header = LocalDate.ofEpochDay(today).format(DateTimeFormatter.ofPattern("EEE d MMM", Locale("es", "ES")))
         .replaceFirstChar { it.uppercase() }
-    return TodayData(header, today, visible.count { !it.isCompleted }, rows)
+    return TodayData(header, today, visible.count { !it.isCompleted } + projectRows.size, rows)
 }
 
 class TodayTasksWidget : GlanceAppWidget() {
@@ -113,16 +125,31 @@ class TodayTasksWidget : GlanceAppWidget() {
                     } else {
                         LazyColumn(modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
                             items(data.rows) { row ->
-                                CheckBox(
-                                    checked = row.completed,
-                                    onCheckedChange = actionRunCallback<ToggleWidgetTaskCallback>(actionParametersOf(WidgetKeys.TaskId to row.id)),
-                                    text = row.label,
-                                    style = TextStyle(
-                                        color = GlanceTheme.colors.onBackground,
-                                        fontSize = 13.sp,
-                                        textDecoration = if (row.completed) TextDecoration.LineThrough else TextDecoration.None
+                                val projectNode = row.projectNodeId
+                                if (projectNode == null) {
+                                    CheckBox(
+                                        checked = row.completed,
+                                        onCheckedChange = actionRunCallback<ToggleWidgetTaskCallback>(actionParametersOf(WidgetKeys.TaskId to row.id)),
+                                        text = row.label,
+                                        style = TextStyle(
+                                            color = GlanceTheme.colors.onBackground,
+                                            fontSize = 13.sp,
+                                            textDecoration = if (row.completed) TextDecoration.LineThrough else TextDecoration.None
+                                        )
                                     )
-                                )
+                                } else {
+                                    CheckBox(
+                                        checked = false,
+                                        onCheckedChange = actionRunCallback<CompleteProjectPartCallback>(
+                                            actionParametersOf(
+                                                WidgetKeys.TaskId to projectNode,
+                                                WidgetKeys.Delta to row.projectMinutes
+                                            )
+                                        ),
+                                        text = row.label,
+                                        style = TextStyle(color = GlanceTheme.colors.onBackground, fontSize = 13.sp)
+                                    )
+                                }
                             }
                         }
                     }
