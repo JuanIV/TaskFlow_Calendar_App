@@ -50,7 +50,8 @@ data class ProjectFormData(
     val capacityMinutes: Int,
     val workingDaysMask: Int,
     val excludedDays: List<Long>,
-    val kind: String = ProjectKind.SIMPLE
+    val kind: String = ProjectKind.SIMPLE,
+    val trackingMode: String = TrackingMode.DYNAMIC
 )
 
 // "1,5" -> 90, "2" -> 120. Devuelve null si no es un numero valido o es negativo.

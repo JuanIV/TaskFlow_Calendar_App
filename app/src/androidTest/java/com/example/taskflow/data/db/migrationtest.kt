@@ -107,4 +107,34 @@ class MigrationTest {
         db = helper.runMigrationsAndValidate(testDb, 9, true, AppDatabase.MIGRATION_8_9)
         db.close()
     }
+
+    @Test
+    fun migrate9To10() {
+        var db = helper.createDatabase(testDb, 9)
+        db.execSQL(
+            "INSERT INTO projects (id, name, colorArgb, startDate, dailyCapacityMinutes, workingDaysMask, status, isTemplate, createdAt) " +
+                "VALUES (1, 'P', 0, 19000, 240, 31, 'ACTIVE', 0, 0)"
+        )
+        db.execSQL(
+            "INSERT INTO tasks (id, title, isCompleted, sortOrder, createdAt, priority, recurrenceType, recurrenceInterval, recurrenceWeekdaysMask, recurrenceSpawned) " +
+                "VALUES (1, 'T', 0, 0, 0, 0, 'NONE', 1, 0, 0)"
+        )
+        db.execSQL(
+            "INSERT INTO tasks (id, title, isCompleted, sortOrder, createdAt, priority, recurrenceType, recurrenceInterval, recurrenceWeekdaysMask, recurrenceSpawned) " +
+                "VALUES (2, 'U', 0, 0, 0, 0, 'NONE', 1, 0, 0)"
+        )
+        db.close()
+        db = helper.runMigrationsAndValidate(testDb, 10, true, AppDatabase.MIGRATION_9_10)
+        val project = db.query("SELECT trackingMode FROM projects WHERE id = 1")
+        project.moveToFirst()
+        assertEquals("DYNAMIC", project.getString(0))
+        project.close()
+        val task = db.query("SELECT projectId, projectNodeId, projectKey FROM tasks WHERE id = 1")
+        task.moveToFirst()
+        assertEquals(true, task.isNull(0))
+        assertEquals(true, task.isNull(1))
+        assertEquals(true, task.isNull(2))
+        task.close()
+        db.close()
+    }
 }

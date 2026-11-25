@@ -22,5 +22,7 @@ data class ProjectEntity(
     val createdAt: Long,
     val deletedAt: Long? = null,
     // SIMPLE o ADVANCED. null equivale a SIMPLE.
-    val kind: String? = null
+    val kind: String? = null,
+    // DYNAMIC, DAILY o NONE (ver domain/trackingmode.kt)
+    val trackingMode: String = "DYNAMIC"
 )

@@ -71,4 +71,16 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id = :taskId OR parentTaskId = :taskId")
     suspend fun permanentlyDeleteTask(taskId: Long)
+
+    @Query("SELECT * FROM tasks WHERE projectId = :projectId AND projectKey IS NOT NULL")
+    suspend fun getProjectTasksSync(projectId: Long): List<TaskEntity>
+
+    @Query("SELECT * FROM tasks WHERE projectKey IS NOT NULL")
+    suspend fun getAllProjectTasksSync(): List<TaskEntity>
+
+    @Query("DELETE FROM tasks WHERE id IN (:ids)")
+    suspend fun deleteTasksByIds(ids: List<Long>)
+
+    @Query("DELETE FROM tasks WHERE projectId = :projectId")
+    suspend fun deleteProjectTasks(projectId: Long)
 }

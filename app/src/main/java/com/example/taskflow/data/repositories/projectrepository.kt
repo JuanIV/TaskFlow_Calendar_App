@@ -12,6 +12,8 @@ import com.example.taskflow.data.entities.ProjectDailyLogEntity
 import com.example.taskflow.data.entities.ProjectCellAssignmentEntity
 import com.example.taskflow.domain.ProjectKind
 import com.example.taskflow.domain.isValidProjectKind
+import com.example.taskflow.domain.effectiveTrackingMode
+import com.example.taskflow.domain.isValidTrackingMode
 import com.example.taskflow.domain.DayProjectTotals
 import com.example.taskflow.domain.DEFAULT_LEAF_MINUTES
 import com.example.taskflow.domain.MIN_LEAF_MINUTES
@@ -130,7 +132,8 @@ class ProjectRepository @Inject constructor(
                         status = ProjectStatus.ACTIVE,
                         isTemplate = false,
                         createdAt = nowMs,
-                        kind = form.kind
+                        kind = form.kind,
+                        trackingMode = effectiveTrackingMode(form.trackingMode)
                     )
                 )
                 if (excluded.isNotEmpty()) {
@@ -631,6 +634,14 @@ class ProjectRepository @Inject constructor(
         if (!isValidProjectKind(kind)) return OpResult.INVALID_STATUS
         val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
         projectDao.updateProject(project.copy(kind = kind))
+        return OpResult.OK
+    }
+
+    // Cambia el modo de seguimiento. La re-sincronizacion de tareas se engancha en el paquete 3.
+    suspend fun setTrackingMode(projectId: Long, mode: String): OpResult {
+        if (!isValidTrackingMode(mode)) return OpResult.INVALID_STATUS
+        val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
+        projectDao.updateProject(project.copy(trackingMode = mode))
         return OpResult.OK
     }
 

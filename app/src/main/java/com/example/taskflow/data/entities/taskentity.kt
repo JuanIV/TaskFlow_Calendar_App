@@ -15,7 +15,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("parentTaskId")]
+    indices = [
+        Index("parentTaskId"),
+        Index("projectId"),
+        Index(value = ["projectKey"], unique = true)
+    ]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -38,5 +42,10 @@ data class TaskEntity(
     val recurrenceInterval: Int = 1,
     val recurrenceWeekdaysMask: Int = 0,
     // true = al completarla ya se creo la siguiente repeticion
-    val recurrenceSpawned: Boolean = false
+    val recurrenceSpawned: Boolean = false,
+    // Fase 10: tarea materializada por un proyecto (null en tareas normales)
+    val projectId: Long? = null,
+    val projectNodeId: Long? = null,
+    // Clave unica de la tarea materializada (ver domain/projecttasks.kt)
+    val projectKey: String? = null
 )

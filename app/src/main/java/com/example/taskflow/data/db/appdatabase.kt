@@ -27,7 +27,7 @@ import com.example.taskflow.data.entities.*
         ProjectEntity::class, ProjectNodeEntity::class, ProjectExcludedDayEntity::class,
         ProjectDependencyEntity::class, ProjectDailyLogEntity::class, ProjectCellAssignmentEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -294,6 +294,17 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_cell_assignments_epochDay` ON `project_cell_assignments` (`epochDay`)")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `trackingMode` TEXT NOT NULL DEFAULT 'DYNAMIC'")
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `projectId` INTEGER")
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `projectNodeId` INTEGER")
+                db.execSQL("ALTER TABLE `tasks` ADD COLUMN `projectKey` TEXT")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_projectId` ON `tasks` (`projectId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_tasks_projectKey` ON `tasks` (`projectKey`)")
             }
         }
     }
