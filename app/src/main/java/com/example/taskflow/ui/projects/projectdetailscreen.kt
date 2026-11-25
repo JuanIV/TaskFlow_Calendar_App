@@ -3,6 +3,7 @@ package com.example.taskflow.ui.projects
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import java.time.DayOfWeek
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -70,7 +71,6 @@ private fun filterLabelRes(filter: ListFilter): Int = when (filter) {
 @Composable
 fun ProjectDetailScreen(
     onBack: () -> Unit,
-    onOpenGantt: (Long) -> Unit = {},
     viewModel: ProjectDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -82,6 +82,14 @@ fun ProjectDetailScreen(
     val pullCandidate by viewModel.pullCandidate.collectAsState()
     val dependencies by viewModel.dependencies.collectAsState()
     val deviation by viewModel.deviation.collectAsState()
+    val gridRows by viewModel.gridRows.collectAsState()
+    val gridDays by viewModel.gridDays.collectAsState()
+    val weekView by viewModel.weekView.collectAsState()
+    val editMode by viewModel.editMode.collectAsState()
+    val advanced = viewModel.isAdvanced()
+    val firstDayOfWeek = DayOfWeek.of(
+        viewModel.firstDayOfWeekValue.collectAsState().value.coerceIn(1, 7)
+    )
 
     var filterName by rememberSaveable { mutableStateOf(ListFilter.ALL.name) }
     var collapsed by remember { mutableStateOf<Set<Long>>(emptySet()) }
@@ -97,6 +105,7 @@ fun ProjectDetailScreen(
     var movingNodeId by remember { mutableStateOf<Long?>(null) }
     var depNodeId by remember { mutableStateOf<Long?>(null) }
     var exportRequested by remember { mutableStateOf(false) }
+    var shareGridRequested by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -152,9 +161,6 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onOpenGantt(viewModel.projectId) }) {
-                        Icon(Icons.Default.Timeline, contentDescription = stringResource(R.string.p2b_open_gantt))
-                    }
                     IconButton(onClick = { showEditProject = true }) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.s2_edit))
                     }
@@ -251,46 +257,117 @@ fun ProjectDetailScreen(
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ListFilter.values().forEach { f ->
+            if (advanced) {
+                val days = gridDays
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     FilterChip(
-                        selected = activeFilter == f,
-                        onClick = { filterName = f.name },
-                        label = { Text(stringResource(filterLabelRes(f))) }
+                        selected = weekView,
+                        onClick = { viewModel.toggleWeekView() },
+                        enabled = !editMode,
+                        label = {
+                            Text(stringResource(if (weekView) R.string.p4_grid_switch_day else R.string.p4_grid_switch_week))
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    if (!editMode) {
+                        IconButton(onClick = { viewModel.enterGridEditMode() }) {
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.p6_edit))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { shareGridRequested = true }) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.p7_share_grid))
+                        }
+                    } else {
+                        TextButton(onClick = { viewModel.cancelGridEdit() }) {
+                            Text(stringResource(R.string.p6_cancel))
+                        }
+                        TextButton(onClick = {
+                            viewModel.saveGridEdit { result -> showOpResult(context, result) }
+                        }) {
+                            Text(stringResource(R.string.p6_save))
+                        }
+                    }
+                }
+                if (editMode) {
+                    Text(
+                        stringResource(R.string.p6_edit_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
-            }
-
-            if (rows.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.p1c_empty_tree), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (days != null) {
+                    ProjectGridView(
+                        rows = gridRows,
+                        days = days,
+                        weekView = weekView,
+                        today = today,
+                        firstDay = firstDayOfWeek,
+                        onToggleCollapse = { viewModel.toggleCollapsedGrid(it) },
+                        editMode = editMode,
+                        onCellTap = { nodeId, day -> viewModel.toggleGridCell(nodeId, day) }
+                    )
+                }
+                if (shareGridRequested) {
+                    shareGridRequested = false
+                    val d = gridDays
+                    if (d != null) {
+                        val file = renderGridPng(
+                            context,
+                            currentProject.name.replace(' ', '_') + "_grid.png",
+                            gridRows,
+                            d,
+                            weekView,
+                            firstDayOfWeek
+                        )
+                        shareGridPng(context, file)
+                    }
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                    items(rows, key = { it.nodeId }) { row ->
-                        ListRowView(
-                            row = row,
-                            onToggleExpand = {
-                                collapsed = if (collapsed.contains(row.nodeId)) collapsed - row.nodeId else collapsed + row.nodeId
-                            },
-                            onToggleCompleted = {
-                                viewModel.setNodeCompleted(row.nodeId, !row.completed, null) { result ->
-                                    showOpResult(context, result)
-                                }
-                            },
-                            onAddChild = { newNodeParent = row.nodeId; showNewNode = true },
-                            onEdit = { editingNode = nodes.firstOrNull { it.id == row.nodeId } },
-                            onMove = { movingNodeId = row.nodeId },
-                            onDependencies = { depNodeId = row.nodeId },
-                            onDelete = { deletingNodeId = row.nodeId },
-                            onUp = { viewModel.moveSibling(row.nodeId, -1) { result -> showOpResult(context, result) } },
-                            onDown = { viewModel.moveSibling(row.nodeId, 1) { result -> showOpResult(context, result) } }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ListFilter.values().forEach { f ->
+                        FilterChip(
+                            selected = activeFilter == f,
+                            onClick = { filterName = f.name },
+                            label = { Text(stringResource(filterLabelRes(f))) }
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(88.dp)) }
+                }
+
+                if (rows.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.p1c_empty_tree), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                        items(rows, key = { it.nodeId }) { row ->
+                            ListRowView(
+                                row = row,
+                                onToggleExpand = {
+                                    collapsed = if (collapsed.contains(row.nodeId)) collapsed - row.nodeId else collapsed + row.nodeId
+                                },
+                                onToggleCompleted = {
+                                    viewModel.setNodeCompleted(row.nodeId, !row.completed, null) { result ->
+                                        showOpResult(context, result)
+                                    }
+                                },
+                                onAddChild = { newNodeParent = row.nodeId; showNewNode = true },
+                                onEdit = { editingNode = nodes.firstOrNull { it.id == row.nodeId } },
+                                onMove = { movingNodeId = row.nodeId },
+                                onDependencies = { depNodeId = row.nodeId },
+                                onDelete = { deletingNodeId = row.nodeId },
+                                onUp = { viewModel.moveSibling(row.nodeId, -1) { result -> showOpResult(context, result) } },
+                                onDown = { viewModel.moveSibling(row.nodeId, 1) { result -> showOpResult(context, result) } }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(88.dp)) }
+                    }
                 }
             }
         }

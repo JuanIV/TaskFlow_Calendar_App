@@ -23,6 +23,8 @@ import com.example.taskflow.R
 import com.example.taskflow.data.entities.ProjectEntity
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.PlanStatus
+import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.effectiveProjectKind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,6 +157,13 @@ fun ProjectCardView(card: ProjectCard, onClick: () -> Unit) {
             Box(modifier = Modifier.width(8.dp).fillMaxHeight().background(Color(project.colorArgb)))
             Column(modifier = Modifier.padding(12.dp).weight(1f)) {
                 Text(project.name, style = MaterialTheme.typography.titleMedium)
+                if (effectiveProjectKind(project.kind) == ProjectKind.ADVANCED) {
+                    Text(
+                        stringResource(R.string.p3_kind_badge_advanced),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
                     progress = { summary.progressPercent / 100f },

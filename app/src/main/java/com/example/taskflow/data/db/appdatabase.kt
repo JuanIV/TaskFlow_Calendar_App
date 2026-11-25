@@ -15,6 +15,7 @@ import com.example.taskflow.data.daos.ProjectDao
 import com.example.taskflow.data.daos.ProjectNodeDao
 import com.example.taskflow.data.daos.ProjectDependencyDao
 import com.example.taskflow.data.daos.ProjectDailyLogDao
+import com.example.taskflow.data.daos.ProjectCellDao
 import com.example.taskflow.data.entities.*
 
 @Database(
@@ -24,9 +25,9 @@ import com.example.taskflow.data.entities.*
         RoutineEntity::class, RoutineTaskEntity::class, RoutineTaskCompletionEntity::class,
         RoutineDayRecordEntity::class, DayRecordEntity::class, FocusLogEntity::class,
         ProjectEntity::class, ProjectNodeEntity::class, ProjectExcludedDayEntity::class,
-        ProjectDependencyEntity::class, ProjectDailyLogEntity::class
+        ProjectDependencyEntity::class, ProjectDailyLogEntity::class, ProjectCellAssignmentEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -41,6 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun projectNodeDao(): ProjectNodeDao
     abstract fun projectDependencyDao(): ProjectDependencyDao
     abstract fun projectDailyLogDao(): ProjectDailyLogDao
+    abstract fun projectCellDao(): ProjectCellDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -277,6 +279,21 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_daily_log_nodeId` ON `project_daily_log` (`nodeId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_daily_log_epochDay` ON `project_daily_log` (`epochDay`)")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `kind` TEXT")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `project_cell_assignments` (
+                        `nodeId` INTEGER NOT NULL,
+                        `epochDay` INTEGER NOT NULL,
+                        PRIMARY KEY(`nodeId`, `epochDay`),
+                        FOREIGN KEY(`nodeId`) REFERENCES `project_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_project_cell_assignments_epochDay` ON `project_cell_assignments` (`epochDay`)")
             }
         }
     }

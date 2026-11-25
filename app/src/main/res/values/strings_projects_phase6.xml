@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p6_edit">Editar</string>
+    <string name="p6_save">Guardar</string>
+    <string name="p6_cancel">Cancelar</string>
+    <string name="p6_edit_hint">Toca una tarea para marcar el día en el que se trabaja en ella.</string>
+    <string name="p6_save_ok">Cambios guardados</string>
+</resources>

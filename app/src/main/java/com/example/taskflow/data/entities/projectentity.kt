@@ -20,5 +20,7 @@ data class ProjectEntity(
     val status: String,
     val isTemplate: Boolean = false,
     val createdAt: Long,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    // SIMPLE o ADVANCED. null equivale a SIMPLE.
+    val kind: String? = null
 )

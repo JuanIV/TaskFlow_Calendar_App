@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p4_grid_week">Semana</string>
+    <string name="p4_grid_day">Dia</string>
+    <string name="p4_grid_switch_week">Ver por semanas</string>
+    <string name="p4_grid_switch_day">Ver por dias</string>
+    <string name="p4_grid_empty">Este proyecto no tiene tareas todavia.</string>
+    <string name="p4_grid_legend_pending">Pendiente</string>
+    <string name="p4_grid_legend_done">Completada</string>
+    <string name="p4_grid_today">Hoy</string>
+</resources>

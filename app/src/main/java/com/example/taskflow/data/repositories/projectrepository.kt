@@ -9,6 +9,9 @@ import com.example.taskflow.data.entities.ProjectExcludedDayEntity
 import com.example.taskflow.data.entities.ProjectNodeEntity
 import com.example.taskflow.data.entities.ProjectDependencyEntity
 import com.example.taskflow.data.entities.ProjectDailyLogEntity
+import com.example.taskflow.data.entities.ProjectCellAssignmentEntity
+import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.isValidProjectKind
 import com.example.taskflow.domain.DayProjectTotals
 import com.example.taskflow.domain.DEFAULT_LEAF_MINUTES
 import com.example.taskflow.domain.MIN_LEAF_MINUTES
@@ -126,13 +129,15 @@ class ProjectRepository @Inject constructor(
                         workingDaysMask = form.workingDaysMask,
                         status = ProjectStatus.ACTIVE,
                         isTemplate = false,
-                        createdAt = nowMs
+                        createdAt = nowMs,
+                        kind = form.kind
                     )
                 )
                 if (excluded.isNotEmpty()) {
                     projectDao.insertExcludedDays(excluded.map { ProjectExcludedDayEntity(id, it) })
                 }
             } else {
+                // Nota: cambiar de ADVANCED a SIMPLE conserva las asignaciones; no se usan hasta volver a ADVANCED.
                 projectDao.updateProject(
                     existing.copy(
                         name = name,
@@ -142,7 +147,8 @@ class ProjectRepository @Inject constructor(
                         startDate = form.startDate,
                         deadlineDate = form.deadlineDate,
                         dailyCapacityMinutes = form.capacityMinutes,
-                        workingDaysMask = form.workingDaysMask
+                        workingDaysMask = form.workingDaysMask,
+                        kind = form.kind
                     )
                 )
                 projectDao.deleteExcludedDays(existing.id)
@@ -610,4 +616,39 @@ class ProjectRepository @Inject constructor(
             )
         )
     }
+
+    // ---------- Proyectos avanzados (fase 9) ----------
+
+    // Asignaciones manuales de dias de un proyecto
+    suspend fun getAssignments(projectId: Long): List<ProjectCellAssignmentEntity> =
+        database.projectCellDao().getForProject(projectId)
+
+    fun observeAssignments(projectId: Long): Flow<List<ProjectCellAssignmentEntity>> =
+        database.projectCellDao().observeForProject(projectId)
+
+    // Cambia el tipo del proyecto. null equivale a SIMPLE.
+    suspend fun setKind(projectId: Long, kind: String?): OpResult {
+        if (!isValidProjectKind(kind)) return OpResult.INVALID_STATUS
+        val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
+        projectDao.updateProject(project.copy(kind = kind))
+        return OpResult.OK
+    }
+
+    // Reemplaza todas las asignaciones de un proyecto avanzado.
+    // cells = pares (nodeId, epochDay). Solo se aceptan hojas (no grupos ni hitos).
+    suspend fun replaceAssignments(projectId: Long, cells: Set<Pair<Long, Long>>): OpResult =
+        database.withTransaction<OpResult> {
+            val project = projectDao.getProjectById(projectId) ?: return@withTransaction OpResult.NOT_FOUND
+            if (project.kind != ProjectKind.ADVANCED) return@withTransaction OpResult.INVALID_STATUS
+            val nodes = nodeDao.getNodesSync(projectId)
+            val leaves = nodes
+                .filter { !it.isMilestone && !hasChildren(nodes, it.id) }
+                .map { it.id }
+                .toSet()
+            if (cells.any { it.first !in leaves }) return@withTransaction OpResult.INVALID_STATUS
+            val dao = database.projectCellDao()
+            dao.deleteForProject(projectId)
+            dao.insertAll(cells.map { ProjectCellAssignmentEntity(it.first, it.second) })
+            OpResult.OK
+        }
 }

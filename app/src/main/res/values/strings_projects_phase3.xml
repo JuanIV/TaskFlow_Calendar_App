@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="p3_kind_label">Tipo de proyecto</string>
+    <string name="p3_kind_simple">Simple</string>
+    <string name="p3_kind_advanced">Avanzado</string>
+    <string name="p3_kind_help">Simple: lista de tareas con duraciones; el día se asigna solo. Avanzado: diagrama donde marcas tú los días de cada tarea.</string>
+    <string name="p3_kind_badge_advanced">Avanzado</string>
+</resources>

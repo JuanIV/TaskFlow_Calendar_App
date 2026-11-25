@@ -38,7 +38,6 @@ import com.example.taskflow.ui.stats.StatsDetailScreen
 import com.example.taskflow.ui.stats.StatsScreen
 import com.example.taskflow.ui.tasks.TasksScreen
 import com.example.taskflow.ui.projects.ProjectDetailScreen
-import com.example.taskflow.ui.projects.ProjectGanttScreen
 import com.example.taskflow.ui.projects.ProjectsScreen
 
 sealed class Screen(val route: String, val titleRes: Int, val icon: @Composable () -> Unit) {
@@ -192,16 +191,7 @@ fun AppNavigation(
                 route = "project_detail/{projectId}",
                 arguments = listOf(navArgument("projectId") { type = NavType.LongType })
             ) {
-                ProjectDetailScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenGantt = { projectId -> navController.navigate("project_gantt/$projectId") }
-                )
-            }
-            composable(
-                route = "project_gantt/{projectId}",
-                arguments = listOf(navArgument("projectId") { type = NavType.LongType })
-            ) {
-                ProjectGanttScreen(onBack = { navController.popBackStack() })
+                ProjectDetailScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Routines.route) {
                 RoutinesScreen(

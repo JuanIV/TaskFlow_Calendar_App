@@ -50,6 +50,7 @@ import com.example.taskflow.domain.EventColors
 import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.ProjectFormData
+import com.example.taskflow.domain.ProjectKind
 import com.example.taskflow.domain.cleanNotes
 import com.example.taskflow.domain.epochDayToPickerMillis
 import com.example.taskflow.domain.formatHours
@@ -141,6 +142,7 @@ fun ProjectFormDialog(
     var deadline by remember { mutableStateOf(existing?.deadlineDate) }
     var hoursText by remember { mutableStateOf(formatHours(existing?.dailyCapacityMinutes ?: 240)) }
     var mask by remember { mutableStateOf(existing?.workingDaysMask ?: 31) }
+    var kind by remember { mutableStateOf(existing?.kind ?: ProjectKind.SIMPLE) }
     var excluded by remember { mutableStateOf(existingExcludedDays.sorted()) }
     var showStart by remember { mutableStateOf(false) }
     var showDeadline by remember { mutableStateOf(false) }
@@ -200,6 +202,25 @@ fun ProjectFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                Text(stringResource(R.string.p3_kind_label), style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = kind == ProjectKind.SIMPLE,
+                        onClick = { kind = ProjectKind.SIMPLE },
+                        label = { Text(stringResource(R.string.p3_kind_simple)) }
+                    )
+                    FilterChip(
+                        selected = kind == ProjectKind.ADVANCED,
+                        onClick = { kind = ProjectKind.ADVANCED },
+                        label = { Text(stringResource(R.string.p3_kind_advanced)) }
+                    )
+                }
+                Text(
+                    stringResource(R.string.p3_kind_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(stringResource(R.string.p1b_field_working_days), style = MaterialTheme.typography.titleSmall)
                 WeekdayToggleRow(mask = mask, onToggle = { bit -> mask = mask xor (1 shl bit) })
                 Spacer(modifier = Modifier.height(8.dp))
@@ -234,7 +255,8 @@ fun ProjectFormDialog(
                             deadlineDate = deadline,
                             capacityMinutes = capacity,
                             workingDaysMask = mask,
-                            excludedDays = excluded
+                            excludedDays = excluded,
+                            kind = kind
                         )
                     )
                 }

@@ -99,4 +99,12 @@ class MigrationTest {
         db = helper.runMigrationsAndValidate(testDb, 8, true, AppDatabase.MIGRATION_7_8)
         db.close()
     }
+
+    @Test
+    fun migrate8To9() {
+        var db = helper.createDatabase(testDb, 8)
+        db.close()
+        db = helper.runMigrationsAndValidate(testDb, 9, true, AppDatabase.MIGRATION_8_9)
+        db.close()
+    }
 }

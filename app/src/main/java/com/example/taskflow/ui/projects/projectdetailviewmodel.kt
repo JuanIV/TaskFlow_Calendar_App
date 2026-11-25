@@ -15,6 +15,17 @@ import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.ProjectFormData
 import com.example.taskflow.domain.ProjectPlan
+import com.example.taskflow.domain.GridDays
+import com.example.taskflow.domain.GridRow
+import com.example.taskflow.domain.WeekCell
+import com.example.taskflow.domain.buildGridRows
+import com.example.taskflow.domain.gridDaysOf
+import com.example.taskflow.domain.weekCellsOf
+import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.effectiveProjectKind
+import com.example.taskflow.domain.GridCell
+import com.example.taskflow.domain.assignmentsToLeafPlanned
+import com.example.taskflow.domain.isAssignableLeaf
 import com.example.taskflow.domain.childrenOfNode
 import com.example.taskflow.domain.findPullCandidate
 import com.example.taskflow.domain.logicalDateNow
@@ -62,6 +73,87 @@ class ProjectDetailViewModel @Inject constructor(
     private val _deviation = MutableStateFlow<com.example.taskflow.domain.DeviationSummary?>(null)
     val deviation: StateFlow<com.example.taskflow.domain.DeviationSummary?> = _deviation.asStateFlow()
 
+    private val _gridRows = MutableStateFlow<List<GridRow>>(emptyList())
+    val gridRows: StateFlow<List<GridRow>> = _gridRows.asStateFlow()
+
+    private val _gridDays = MutableStateFlow<GridDays?>(null)
+    val gridDays: StateFlow<GridDays?> = _gridDays.asStateFlow()
+
+    private val _weekView = MutableStateFlow(false)
+    val weekView: StateFlow<Boolean> = _weekView.asStateFlow()
+
+    private val _collapsedGrid = MutableStateFlow<Set<Long>>(emptySet())
+    val collapsedGrid: StateFlow<Set<Long>> = _collapsedGrid.asStateFlow()
+
+    fun isAdvanced(): Boolean = effectiveProjectKind(project.value?.kind) == ProjectKind.ADVANCED
+
+    fun toggleWeekView() {
+        _weekView.value = !_weekView.value
+    }
+
+    fun toggleCollapsedGrid(nodeId: Long) {
+        val current = _collapsedGrid.value
+        _collapsedGrid.value = if (current.contains(nodeId)) current - nodeId else current + nodeId
+        if (_editMode.value) recomputePendingRows()
+    }
+
+    private val _editMode = MutableStateFlow(false)
+    val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
+
+    private val _pendingCells = MutableStateFlow<Set<Pair<Long, Long>>>(emptySet())
+
+    // Entra en modo edicion: copia las asignaciones persistidas como punto de partida editable.
+    fun enterGridEditMode() {
+        viewModelScope.launch {
+            val current = repository.getAssignments(projectId).map { Pair(it.nodeId, it.epochDay) }.toSet()
+            _pendingCells.value = current
+            _weekView.value = false
+            _editMode.value = true
+            recomputePendingRows()
+        }
+    }
+
+    // Pinta o despinta una celda. Solo tiene efecto sobre hojas (no grupos ni hitos).
+    fun toggleGridCell(nodeId: Long, epochDay: Long) {
+        if (!_editMode.value) return
+        if (!isAssignableLeaf(nodes.value, nodeId)) return
+        val key = Pair(nodeId, epochDay)
+        val current = _pendingCells.value
+        _pendingCells.value = if (current.contains(key)) current - key else current + key
+        recomputePendingRows()
+    }
+
+    // Descarta los cambios y vuelve a la vista persistida.
+    fun cancelGridEdit() {
+        _editMode.value = false
+        _pendingCells.value = emptySet()
+        viewModelScope.launch { refreshAll(project.value, nodes.value, dependencies.value) }
+    }
+
+    // Guarda las celdas pintadas y sale del modo edicion.
+    fun saveGridEdit(onResult: (OpResult) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.replaceAssignments(projectId, _pendingCells.value)
+            if (result == OpResult.OK) {
+                _editMode.value = false
+                _pendingCells.value = emptySet()
+                refreshAll(project.value, nodes.value, dependencies.value)
+            }
+            onResult(result)
+        }
+    }
+
+    // Recalcula la rejilla mostrada a partir de las celdas pendientes, sin tocar lo persistido.
+    private fun recomputePendingRows() {
+        val days = _gridDays.value ?: return
+        val leafPlanned = assignmentsToLeafPlanned(_pendingCells.value)
+        val leafCompleted = nodes.value.filter { it.completed }.map { it.id }.toSet()
+        _gridRows.value = buildGridRows(nodes.value, days, leafPlanned, leafCompleted, _collapsedGrid.value)
+    }
+
+    val firstDayOfWeekValue: StateFlow<Int> = settingsRepo.firstDayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+
     private fun now(): Long = System.currentTimeMillis()
 
     private suspend fun refreshAll(
@@ -84,6 +176,22 @@ class ProjectDetailViewModel @Inject constructor(
             )
         }
         _deviation.value = com.example.taskflow.domain.deviationSummary(currentNodes)
+        if (effectiveProjectKind(current?.kind) == ProjectKind.ADVANCED) {
+            val p = current!!
+            val days = gridDaysOf(
+                p.startDate,
+                _plan.value?.expectedEndDay,
+                p.deadlineDate,
+                today
+            )
+            val leafPlanned = leafPlannedFromAssignments(repository.getAssignments(projectId))
+            val leafCompleted = currentNodes.filter { it.completed }.map { it.id }.toSet()
+            _gridDays.value = days
+            _gridRows.value = buildGridRows(currentNodes, days, leafPlanned, leafCompleted, _collapsedGrid.value)
+        } else {
+            _gridDays.value = null
+            _gridRows.value = emptyList()
+        }
     }
 
     private fun launchResult(onResult: (OpResult) -> Unit, block: suspend () -> OpResult) {
@@ -171,6 +279,18 @@ class ProjectDetailViewModel @Inject constructor(
 
     // Filas para exportar a CSV. Se llama desde la pantalla al pulsar Exportar.
     suspend fun exportRows(): List<List<String?>> = repository.exportRows(projectId, _today.value)
+
+    // Asignaciones manuales de un proyecto avanzado: nodeId -> (dia -> minutos).
+    // Cada dia asignado cuenta 60 minutos; la rejilla solo necesita saber si hay trabajo.
+    private fun leafPlannedFromAssignments(
+        assignments: List<com.example.taskflow.data.entities.ProjectCellAssignmentEntity>
+    ): Map<Long, Map<Long, Int>> {
+        val out = HashMap<Long, MutableMap<Long, Int>>()
+        for (a in assignments) {
+            out.getOrPut(a.nodeId) { HashMap() }[a.epochDay] = 60
+        }
+        return out
+    }
 
     // Cada cambio del proyecto, de sus nodos o de sus dependencias recalcula el plan.
     init {

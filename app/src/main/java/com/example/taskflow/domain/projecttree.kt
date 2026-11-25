@@ -49,7 +49,8 @@ data class ProjectFormData(
     val deadlineDate: Long?,
     val capacityMinutes: Int,
     val workingDaysMask: Int,
-    val excludedDays: List<Long>
+    val excludedDays: List<Long>,
+    val kind: String = ProjectKind.SIMPLE
 )
 
 // "1,5" -> 90, "2" -> 120. Devuelve null si no es un numero valido o es negativo.
