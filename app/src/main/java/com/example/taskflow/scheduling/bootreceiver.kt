@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.data.repositories.ProjectTaskSync
 import com.example.taskflow.domain.DayCloser
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.notifications.NotificationRefresher
@@ -20,6 +21,7 @@ class BootReceiver : BroadcastReceiver() {
     @Inject lateinit var dayCloser: DayCloser
     @Inject lateinit var settingsRepo: SettingsRepository
     @Inject lateinit var refresher: NotificationRefresher
+    @Inject lateinit var projectTaskSync: ProjectTaskSync
 
     override fun onReceive(context: Context, intent: Intent) {
         val validActions = listOf(
@@ -38,6 +40,7 @@ class BootReceiver : BroadcastReceiver() {
                 val dayStartHour = settingsRepo.getDayStartHourSync()
                 val logicalYesterday = logicalDateNow(dayStartHour) - 1
                 dayCloser.closeDaysUpTo(logicalYesterday)
+                projectTaskSync.syncAll(notify = false)
                 coordinator.rescheduleAll()
                 refresher.refreshAll()
             } finally {

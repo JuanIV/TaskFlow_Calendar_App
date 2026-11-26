@@ -6,6 +6,8 @@ import com.example.taskflow.data.entities.EventEntity
 import com.example.taskflow.data.entities.EventExceptionEntity
 import com.example.taskflow.data.entities.EventReminderEntity
 import com.example.taskflow.domain.EventOccurrence
+import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.effectiveProjectKind
 import com.example.taskflow.domain.expandEvents
 import com.example.taskflow.domain.planProject
 import com.example.taskflow.domain.projectCalendarItems
@@ -55,15 +57,16 @@ class EventRepository @Inject constructor(
                 val pNodes = nodesByProject[project.id].orEmpty()
                 val pDeps = depsByProject[project.id].orEmpty()
                 val excluded = excludedByProject[project.id].orEmpty()
-                val planNodes = buildPlanNodes(pNodes, pDeps)
-                val config = project.toPlanConfig(excluded)
-                val plan = planProject(config, planNodes, fromEpoch)
-
-                val items = projectCalendarItems(
-                    project.name,
-                    project.deadlineDate,
+                val advanced = effectiveProjectKind(project.kind) == ProjectKind.ADVANCED
+                val milestones: List<Pair<String, Long>> = if (advanced) {
+                    emptyList()
+                } else {
+                    val planNodes = buildPlanNodes(pNodes, pDeps)
+                    val plan = planProject(project.toPlanConfig(excluded), planNodes, fromEpoch)
                     pNodes.filter { it.isMilestone }.mapNotNull { m -> plan.nodes[m.id]?.startDay?.let { Pair(m.title, it) } }
-                )
+                }
+
+                val items = projectCalendarItems(project.name, project.deadlineDate, milestones)
 
                 items.forEachIndexed { index, item ->
                     if (item.day in fromEpoch..toEpoch) {

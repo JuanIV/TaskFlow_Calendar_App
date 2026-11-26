@@ -12,8 +12,11 @@ import com.example.taskflow.data.entities.ProjectDailyLogEntity
 import com.example.taskflow.data.entities.ProjectCellAssignmentEntity
 import com.example.taskflow.domain.ProjectKind
 import com.example.taskflow.domain.isValidProjectKind
+import com.example.taskflow.domain.effectiveProjectKind
 import com.example.taskflow.domain.effectiveTrackingMode
 import com.example.taskflow.domain.isValidTrackingMode
+import com.example.taskflow.domain.advancedProjectPlan
+import com.example.taskflow.domain.logicalDayOfMillis
 import com.example.taskflow.domain.DayProjectTotals
 import com.example.taskflow.domain.DEFAULT_LEAF_MINUTES
 import com.example.taskflow.domain.MIN_LEAF_MINUTES
@@ -48,6 +51,7 @@ import com.example.taskflow.domain.toMilestone
 import com.example.taskflow.domain.validateNodeDraft
 import com.example.taskflow.domain.validateProject
 import kotlinx.coroutines.flow.Flow
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -84,8 +88,29 @@ fun ProjectEntity.toPlanConfig(excludedDays: Set<Long>): PlanConfig = PlanConfig
 class ProjectRepository @Inject constructor(
     private val database: AppDatabase,
     private val projectDao: ProjectDao,
-    private val nodeDao: ProjectNodeDao
+    private val nodeDao: ProjectNodeDao,
+    private val taskSync: ProjectTaskSync
 ) {
+    // Si la operacion fue OK, re-sincroniza las tareas materializadas del proyecto
+    private suspend fun syncIfOk(result: OpResult, projectId: Long): OpResult {
+        if (result == OpResult.OK && projectId != 0L) taskSync.syncProject(projectId)
+        return result
+    }
+
+    // Plan de un proyecto. Los avanzados no pasan por el planificador.
+    private fun planFor(
+        project: ProjectEntity,
+        entities: List<ProjectNodeEntity>,
+        deps: List<ProjectDependencyEntity>,
+        excluded: Set<Long>,
+        today: Long
+    ): ProjectPlan =
+        if (effectiveProjectKind(project.kind) == ProjectKind.ADVANCED) {
+            advancedProjectPlan(today, entities)
+        } else {
+            planProject(project.toPlanConfig(excluded), buildPlanNodes(entities, deps), today)
+        }
+
     // ---------- Observacion ----------
 
     fun observeActiveProjects(): Flow<List<ProjectEntity>> = projectDao.getActiveProjects()
@@ -117,6 +142,7 @@ class ProjectRepository @Inject constructor(
         val name = form.name.trim()
         val description = form.description?.trim()?.takeIf { it.isNotEmpty() }
         val excluded = form.excludedDays.distinct()
+        var savedId = existing?.id ?: 0L
         database.withTransaction<Unit> {
             if (existing == null) {
                 val id = projectDao.insertProject(
@@ -136,6 +162,7 @@ class ProjectRepository @Inject constructor(
                         trackingMode = effectiveTrackingMode(form.trackingMode)
                     )
                 )
+                savedId = id
                 if (excluded.isNotEmpty()) {
                     projectDao.insertExcludedDays(excluded.map { ProjectExcludedDayEntity(id, it) })
                 }
@@ -160,24 +187,36 @@ class ProjectRepository @Inject constructor(
                 }
             }
         }
+        taskSync.syncProject(savedId)
         return OpResult.OK
     }
 
-    suspend fun softDeleteProject(projectId: Long, nowMs: Long) = projectDao.softDeleteProject(projectId, nowMs)
+    suspend fun softDeleteProject(projectId: Long, nowMs: Long) {
+        projectDao.softDeleteProject(projectId, nowMs)
+        taskSync.syncProject(projectId)
+    }
 
-    suspend fun restoreProject(projectId: Long) = projectDao.restoreProject(projectId)
+    suspend fun restoreProject(projectId: Long) {
+        projectDao.restoreProject(projectId)
+        taskSync.syncProject(projectId)
+    }
 
-    suspend fun permanentlyDeleteProject(projectId: Long) = projectDao.permanentlyDeleteProject(projectId)
+    suspend fun permanentlyDeleteProject(projectId: Long) {
+        projectDao.permanentlyDeleteProject(projectId)
+        taskSync.purgeProject(projectId)
+    }
 
     // Cambia el estado respetando las transiciones permitidas
     suspend fun setStatus(projectId: Long, newStatus: String): OpResult {
         val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
         if (!canTransitionProjectStatus(project.status, newStatus)) return OpResult.INVALID_STATUS
         projectDao.updateProject(project.copy(status = newStatus))
+        taskSync.syncProject(projectId)
         return OpResult.OK
     }
 
     // Copia un proyecto (RF-7). Reinicia progreso y adelantos. Devuelve el id nuevo o null.
+    // Las celdas de un proyecto avanzado se copian desplazadas (newStartDate - startDate del origen).
     suspend fun duplicateProject(
         sourceId: Long,
         newName: String,
@@ -187,10 +226,10 @@ class ProjectRepository @Inject constructor(
     ): Long? {
         val name = newName.trim()
         if (name.isEmpty()) return null
-        return database.withTransaction<Long?> {
+        val newId = database.withTransaction<Long?> {
             val source = projectDao.getProjectById(sourceId) ?: return@withTransaction null
             val excluded = projectDao.getExcludedDays(sourceId)
-            val newId = projectDao.insertProject(
+            val createdId = projectDao.insertProject(
                 source.copy(
                     id = 0,
                     name = name,
@@ -202,7 +241,7 @@ class ProjectRepository @Inject constructor(
                 )
             )
             if (excluded.isNotEmpty()) {
-                projectDao.insertExcludedDays(excluded.map { ProjectExcludedDayEntity(newId, it) })
+                projectDao.insertExcludedDays(excluded.map { ProjectExcludedDayEntity(createdId, it) })
             }
             val entities = nodeDao.getNodesSync(sourceId)
             val byId = entities.associateBy { it.id }
@@ -213,7 +252,7 @@ class ProjectRepository @Inject constructor(
                 val newNodeId = nodeDao.insertNode(
                     old.copy(
                         id = 0,
-                        projectId = newId,
+                        projectId = createdId,
                         parentId = old.parentId?.let { newIds[it] },
                         doneMinutes = 0,
                         completed = false,
@@ -223,13 +262,7 @@ class ProjectRepository @Inject constructor(
                         createdAt = nowMs
                     )
                 )
-                val depDao = database.projectDependencyDao()
-            for (dep in depDao.getForProject(sourceId)) {
-                val p = newIds[dep.predecessorId]
-                val s = newIds[dep.successorId]
-                if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
-            }
-            newIds[oldId] = newNodeId
+                newIds[oldId] = newNodeId
             }
             val depDao = database.projectDependencyDao()
             for (dep in depDao.getForProject(sourceId)) {
@@ -237,8 +270,17 @@ class ProjectRepository @Inject constructor(
                 val s = newIds[dep.successorId]
                 if (p != null && s != null) depDao.insert(ProjectDependencyEntity(p, s))
             }
-            newId
+            val cellDao = database.projectCellDao()
+            val delta = newStartDate - source.startDate
+            val newCells = cellDao.getForProject(sourceId).mapNotNull { a ->
+                val mapped = newIds[a.nodeId]
+                if (mapped == null) null else ProjectCellAssignmentEntity(mapped, a.epochDay + delta)
+            }
+            if (newCells.isNotEmpty()) cellDao.insertAll(newCells)
+            createdId
         }
+        if (newId != null) taskSync.syncProject(newId)
+        return newId
     }
 
     // ---------- Arbol ----------
@@ -261,8 +303,8 @@ class ProjectRepository @Inject constructor(
         )
 
     // Anade un nodo al final de los hijos de parentId (null = raiz)
-    suspend fun addNode(projectId: Long, parentId: Long?, draft: NodeDraft, nowMs: Long): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun addNode(projectId: Long, parentId: Long?, draft: NodeDraft, nowMs: Long): OpResult {
+        val r = database.withTransaction<OpResult> {
             val nodes = nodeDao.getNodesSync(projectId)
             val parent: ProjectNodeEntity? = if (parentId == null) null else nodes.firstOrNull { it.id == parentId }
             if (parentId != null && parent == null) return@withTransaction OpResult.NOT_FOUND
@@ -279,11 +321,15 @@ class ProjectRepository @Inject constructor(
             nodeDao.insertNode(newNodeEntity(projectId, parentId, draft, nextOrder, nowMs))
             OpResult.OK
         }
+        return syncIfOk(r, projectId)
+    }
 
     // Edita un nodo. En grupos se ignoran la duracion y la marca de hito.
-    suspend fun updateNode(nodeId: Long, draft: NodeDraft, nowMs: Long): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun updateNode(nodeId: Long, draft: NodeDraft, nowMs: Long): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val current = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = current.projectId
             val nodes = nodeDao.getNodesSync(current.projectId)
             val isGroup = hasChildren(nodes, nodeId)
             val check = validateNodeDraft(draft, !isGroup)
@@ -305,11 +351,15 @@ class ProjectRepository @Inject constructor(
             nodeDao.updateNode(updated)
             OpResult.OK
         }
+        return syncIfOk(r, pid)
+    }
 
     // Borra un nodo y sus descendientes. Si el padre se queda sin hijos, vuelve a ser hoja.
-    suspend fun deleteNode(nodeId: Long, confirmed: Boolean): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun deleteNode(nodeId: Long, confirmed: Boolean): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val target = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = target.projectId
             val nodes = nodeDao.getNodesSync(target.projectId)
             if (!confirmed && subtreeHasProgress(nodes, nodeId)) return@withTransaction OpResult.NEEDS_CONFIRMATION
             val parentId = target.parentId
@@ -323,11 +373,15 @@ class ProjectRepository @Inject constructor(
             }
             OpResult.OK
         }
+        return syncIfOk(r, pid)
+    }
 
     // Mueve un nodo a otro padre (null = raiz) en la posicion newIndex (se recorta al rango valido)
-    suspend fun moveNode(nodeId: Long, newParentId: Long?, newIndex: Int): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun moveNode(nodeId: Long, newParentId: Long?, newIndex: Int): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val target = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = target.projectId
             val nodes = nodeDao.getNodesSync(target.projectId)
             if (newParentId != null && (newParentId == nodeId || subtreeIds(nodes, nodeId).contains(newParentId))) {
                 return@withTransaction OpResult.CYCLE
@@ -357,11 +411,15 @@ class ProjectRepository @Inject constructor(
             changed.values.forEach { nodeDao.updateNode(it) }
             OpResult.OK
         }
+        return syncIfOk(r, pid)
+    }
 
     // Completa o reabre una hoja o un hito. Sobre un grupo devuelve IS_GROUP.
-    suspend fun setNodeCompleted(nodeId: Long, completed: Boolean, actualMinutes: Int?, nowMs: Long): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun setNodeCompleted(nodeId: Long, completed: Boolean, actualMinutes: Int?, nowMs: Long): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = node.projectId
             val nodes = nodeDao.getNodesSync(node.projectId)
             if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
             val updated = when {
@@ -377,11 +435,17 @@ class ProjectRepository @Inject constructor(
             nodeDao.updateNode(updated)
             OpResult.OK
         }
+        if (r == OpResult.OK && pid != 0L) {
+            taskSync.syncProject(pid, if (completed) null else nodeId)
+        }
+        return r
+    }
 
     // ---------- Operaciones de 1a (sin cambios de comportamiento) ----------
 
     // Registra minutos trabajados en una hoja. Si queda completa, marca completed.
-    suspend fun markPartDone(nodeId: Long, minutes: Int, nowMs: Long) {
+    // No sincroniza: lo hacen quienes la llaman.
+    private suspend fun markPartDone(nodeId: Long, minutes: Int, nowMs: Long) {
         val entity = nodeDao.getNodeById(nodeId) ?: return
         if (isZeroLength(entity.toPlanNode())) return
         val updated = applyPartDone(entity.toPlanNode(), minutes)
@@ -414,28 +478,29 @@ class ProjectRepository @Inject constructor(
         val log = database.projectDailyLogDao()
         val existing = log.getForNodeAndDay(nodeId, today)
         log.upsert(mergeDailyLog(existing, nodeId, today, existing?.plannedMinutes ?: minutes, (existing?.doneMinutes ?: 0) + done))
+        taskSync.syncProject(entity.projectId)
     }
 
     // Adelantar a hoy (RF-19)
     suspend fun setPulledForward(nodeId: Long, today: Long) {
         val entity = nodeDao.getNodeById(nodeId) ?: return
         nodeDao.updateNode(entity.copy(pulledForwardDay = today))
+        taskSync.syncProject(entity.projectId)
     }
 
     // Calcula el plan del proyecto. today debe venir de logicalDateNow(dayStartHour).
     suspend fun loadPlan(projectId: Long, today: Long): ProjectPlan? {
         val project = projectDao.getProjectById(projectId) ?: return null
         val excluded = projectDao.getExcludedDays(projectId).toSet()
-        val nodes = buildPlanNodes(
-            nodeDao.getNodesSync(projectId),
-            database.projectDependencyDao().getForProject(projectId)
-        )
-        return planProject(project.toPlanConfig(excluded), nodes, today)
+        val entities = nodeDao.getNodesSync(projectId)
+        val deps = database.projectDependencyDao().getForProject(projectId)
+        return planFor(project, entities, deps, excluded, today)
     }
 
-    // Proyectos activos con su plan de hoy, para Tareas, widget y notificacion
+    // Proyectos simples activos con su plan de hoy. Los avanzados no tienen plan.
     suspend fun getActiveProjectPlansSync(today: Long): List<Pair<ProjectEntity, ProjectPlan>> {
         val projects = projectDao.getActiveProjectsSync()
+            .filter { effectiveProjectKind(it.kind) != ProjectKind.ADVANCED }
         return projects.map { project ->
             val excluded = projectDao.getExcludedDays(project.id).toSet()
             val nodes = buildPlanNodes(
@@ -460,8 +525,8 @@ class ProjectRepository @Inject constructor(
 
     // enabled = true: "successorId espera a predecessorId". enabled = false la quita.
     // Devuelve CYCLE si la relacion crea un ciclo, o si una tarea y su ancestro/descendiente se relacionan.
-    suspend fun setDependency(projectId: Long, predecessorId: Long, successorId: Long, enabled: Boolean): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun setDependency(projectId: Long, predecessorId: Long, successorId: Long, enabled: Boolean): OpResult {
+        val r = database.withTransaction<OpResult> {
             val dao = database.projectDependencyDao()
             if (!enabled) {
                 dao.delete(predecessorId, successorId)
@@ -485,23 +550,31 @@ class ProjectRepository @Inject constructor(
             }
             OpResult.OK
         }
+        return syncIfOk(r, projectId)
+    }
 
     // ---------- Edicion directa en el Gantt (fase 2c) ----------
 
     // Crea una restriccion "no antes de" al mover una barra. Pone la fecha al dia indicado.
-    suspend fun setNotBefore(nodeId: Long, day: Long?): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun setNotBefore(nodeId: Long, day: Long?): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = node.projectId
             val nodes = nodeDao.getNodesSync(node.projectId)
             if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
             nodeDao.updateNode(node.copy(notBeforeDate = day))
             OpResult.OK
         }
+        return syncIfOk(r, pid)
+    }
 
     // Cambia la duracion de una hoja (en minutos). Usa resizeLeaf para respetar el progreso.
-    suspend fun setLeafMinutes(nodeId: Long, minutes: Int, nowMs: Long): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun setLeafMinutes(nodeId: Long, minutes: Int, nowMs: Long): OpResult {
+        var pid = 0L
+        val r = database.withTransaction<OpResult> {
             val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
+            pid = node.projectId
             val nodes = nodeDao.getNodesSync(node.projectId)
             if (hasChildren(nodes, nodeId)) return@withTransaction OpResult.IS_GROUP
             if (node.isMilestone) return@withTransaction OpResult.INVALID_MINUTES
@@ -509,10 +582,12 @@ class ProjectRepository @Inject constructor(
             nodeDao.updateNode(resizeLeaf(node, minutes, nowMs))
             OpResult.OK
         }
+        return syncIfOk(r, pid)
+    }
 
     // Anade una tarea al final de la raiz (fase 2c, creacion desde cero en el Gantt)
-    suspend fun addRootLeaf(projectId: Long, title: String, nowMs: Long, today: Long): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun addRootLeaf(projectId: Long, title: String, nowMs: Long, today: Long): OpResult {
+        val r = database.withTransaction<OpResult> {
             val draft = NodeDraft(title, null, DEFAULT_LEAF_MINUTES, false, 0, null, null)
             val check = validateNodeDraft(draft, true)
             if (check != OpResult.OK) return@withTransaction check
@@ -532,6 +607,8 @@ class ProjectRepository @Inject constructor(
             )
             OpResult.OK
         }
+        return syncIfOk(r, projectId)
+    }
 
     // Guarda el plan del dia en el log: minutos planificados por hoja (sin borrar lo ya hecho).
     suspend fun snapshotPlanForDay(day: Long) {
@@ -554,7 +631,7 @@ class ProjectRepository @Inject constructor(
         }
     }
 
-    // Totales de proyectos de un dia cerrado (para DayCloser)
+    // Totales de proyectos de un dia cerrado (ya no lo usa DayCloser)
     suspend fun totalsForClosedDay(day: Long): DayProjectTotals {
         val logs = database.projectDailyLogDao().getForDay(day)
         return DayProjectTotals(
@@ -569,7 +646,7 @@ class ProjectRepository @Inject constructor(
         val excluded = projectDao.getExcludedDays(projectId).toSet()
         val entities = nodeDao.getNodesSync(projectId)
         val deps = database.projectDependencyDao().getForProject(projectId)
-        val plan = planProject(project.toPlanConfig(excluded), buildPlanNodes(entities, deps), today)
+        val plan = planFor(project, entities, deps, excluded, today)
         val titles = entities.associate { it.id to it.title }
         val depsByNode = deps.groupBy({ it.successorId }, { it.predecessorId })
         val rows = projectCsvRows(entities, plan, titles).toMutableList()
@@ -582,14 +659,14 @@ class ProjectRepository @Inject constructor(
         return fixed
     }
 
-    // Proyectos completados: id y si terminaron antes o en el deadline
+    // Proyectos completados: par (true, terminado antes o en el deadline).
+    // El dia de fin es el de la ultima hoja completada (hora de inicio de dia 0).
     suspend fun completedProjectsSummary(today: Long): List<Pair<Boolean, Boolean>> {
+        val zone = ZoneId.systemDefault()
         val all = projectDao.getAllProjectsSync()
         return all.filter { it.status == ProjectStatus.COMPLETED }.map { project ->
-            val excluded = projectDao.getExcludedDays(project.id).toSet()
-            val nodes = buildPlanNodes(nodeDao.getNodesSync(project.id), database.projectDependencyDao().getForProject(project.id))
-            val plan = planProject(project.toPlanConfig(excluded), nodes, today)
-            val end = plan.expectedEndDay
+            val last = nodeDao.getNodesSync(project.id).mapNotNull { it.completedAt }.maxOrNull()
+            val end: Long? = last?.let { logicalDayOfMillis(it, 0, zone) }
             val deadline = project.deadlineDate
             val beforeDeadline = deadline != null && end != null && end <= deadline
             Pair(true, beforeDeadline)
@@ -601,10 +678,12 @@ class ProjectRepository @Inject constructor(
 
     suspend fun getActiveProjectsOnce(): List<ProjectEntity> = projectDao.getActiveProjectsSync()
 
-    // Suma minutos de enfoque al progreso de una hoja, y los registra en el log del dia.
-    // No marca la hoja como completa por si sola: solo acumula tiempo trabajado.
+    // Suma minutos de enfoque al progreso de una hoja de un proyecto SIMPLE, y los registra en el log del dia.
+    // En proyectos avanzados no hace nada (el enfoque ya se registra en focus_logs).
     suspend fun recordFocusMinutes(nodeId: Long, day: Long, minutes: Int, nowMs: Long) {
         val entity = nodeDao.getNodeById(nodeId) ?: return
+        val project = projectDao.getProjectById(entity.projectId) ?: return
+        if (effectiveProjectKind(project.kind) == ProjectKind.ADVANCED) return
         if (isZeroLength(entity.toPlanNode())) return
         markPartDone(nodeId, minutes, nowMs)
         val log = database.projectDailyLogDao()
@@ -618,6 +697,7 @@ class ProjectRepository @Inject constructor(
                 (existing?.doneMinutes ?: 0) + minutes
             )
         )
+        taskSync.syncProject(entity.projectId)
     }
 
     // ---------- Proyectos avanzados (fase 9) ----------
@@ -634,21 +714,23 @@ class ProjectRepository @Inject constructor(
         if (!isValidProjectKind(kind)) return OpResult.INVALID_STATUS
         val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
         projectDao.updateProject(project.copy(kind = kind))
+        taskSync.syncProject(projectId)
         return OpResult.OK
     }
 
-    // Cambia el modo de seguimiento. La re-sincronizacion de tareas se engancha en el paquete 3.
+    // Cambia el modo de seguimiento y re-sincroniza las tareas materializadas.
     suspend fun setTrackingMode(projectId: Long, mode: String): OpResult {
         if (!isValidTrackingMode(mode)) return OpResult.INVALID_STATUS
         val project = projectDao.getProjectById(projectId) ?: return OpResult.NOT_FOUND
         projectDao.updateProject(project.copy(trackingMode = mode))
+        taskSync.syncProject(projectId)
         return OpResult.OK
     }
 
     // Reemplaza todas las asignaciones de un proyecto avanzado.
     // cells = pares (nodeId, epochDay). Solo se aceptan hojas (no grupos ni hitos).
-    suspend fun replaceAssignments(projectId: Long, cells: Set<Pair<Long, Long>>): OpResult =
-        database.withTransaction<OpResult> {
+    suspend fun replaceAssignments(projectId: Long, cells: Set<Pair<Long, Long>>): OpResult {
+        val r = database.withTransaction<OpResult> {
             val project = projectDao.getProjectById(projectId) ?: return@withTransaction OpResult.NOT_FOUND
             if (project.kind != ProjectKind.ADVANCED) return@withTransaction OpResult.INVALID_STATUS
             val nodes = nodeDao.getNodesSync(projectId)
@@ -662,4 +744,6 @@ class ProjectRepository @Inject constructor(
             dao.insertAll(cells.map { ProjectCellAssignmentEntity(it.first, it.second) })
             OpResult.OK
         }
+        return syncIfOk(r, projectId)
+    }
 }

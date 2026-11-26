@@ -166,7 +166,7 @@ class ProjectDetailViewModel @Inject constructor(
         _today.value = today
         _excludedDays.value = excluded
         _plan.value = repository.loadPlan(projectId, today)
-        _pullCandidate.value = if (current == null) {
+        _pullCandidate.value = if (current == null || effectiveProjectKind(current.kind) == ProjectKind.ADVANCED) {
             null
         } else {
             findPullCandidate(

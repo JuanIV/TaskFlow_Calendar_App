@@ -54,7 +54,7 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE deletedAt IS NULL AND parentTaskId IS NULL AND isCompleted = 0")
     suspend fun getPendingTopLevelSync(): List<TaskEntity>
 
-    @Query("UPDATE tasks SET originalDate = COALESCE(originalDate, date), date = :today WHERE deletedAt IS NULL AND parentTaskId IS NULL AND isCompleted = 0 AND date IS NOT NULL AND date < :today")
+    @Query("UPDATE tasks SET originalDate = COALESCE(originalDate, date), date = :today WHERE deletedAt IS NULL AND parentTaskId IS NULL AND isCompleted = 0 AND date IS NOT NULL AND date < :today AND projectKey IS NULL")
     suspend fun moveOverdueToDate(today: Long)
 
     @Query("SELECT * FROM tasks WHERE deletedAt IS NOT NULL AND parentTaskId IS NULL ORDER BY deletedAt DESC")

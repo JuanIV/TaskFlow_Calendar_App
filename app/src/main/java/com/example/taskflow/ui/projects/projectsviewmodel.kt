@@ -9,7 +9,10 @@ import com.example.taskflow.data.repositories.toPlanConfig
 import com.example.taskflow.data.repositories.toPlanNode
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.ProjectFormData
+import com.example.taskflow.domain.ProjectKind
 import com.example.taskflow.domain.ProjectSummary
+import com.example.taskflow.domain.advancedProjectSummary
+import com.example.taskflow.domain.effectiveProjectKind
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.summarizeProject
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,13 +52,17 @@ class ProjectsViewModel @Inject constructor(
             .mapValues { entry -> entry.value.map { it.epochDay }.toSet() }
         projects.map { project ->
             val projectNodes = nodesByProject[project.id].orEmpty()
-            val summary = summarizeProject(
-                projectId = project.id,
-                config = project.toPlanConfig(excludedByProject[project.id].orEmpty()),
-                nodes = projectNodes.map { it.toPlanNode() },
-                titles = projectNodes.associate { it.id to it.title },
-                today = day
-            )
+            val summary = if (effectiveProjectKind(project.kind) == ProjectKind.ADVANCED) {
+                advancedProjectSummary(project.id, projectNodes)
+            } else {
+                summarizeProject(
+                    projectId = project.id,
+                    config = project.toPlanConfig(excludedByProject[project.id].orEmpty()),
+                    nodes = projectNodes.map { it.toPlanNode() },
+                    titles = projectNodes.associate { it.id to it.title },
+                    today = day
+                )
+            }
             ProjectCard(project, summary)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

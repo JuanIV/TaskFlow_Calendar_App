@@ -5,6 +5,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.taskflow.data.repositories.SettingsRepository
+import com.example.taskflow.data.repositories.ProjectTaskSync
 import com.example.taskflow.domain.DayCloser
 import com.example.taskflow.domain.TimeFormatState
 import com.example.taskflow.domain.logicalDateNow
@@ -27,6 +28,7 @@ class taskflowapplication : Application() {
     @Inject lateinit var settingsRepo: SettingsRepository
     @Inject lateinit var coordinator: SchedulingCoordinator
     @Inject lateinit var focusManager: FocusManager
+    @Inject lateinit var projectTaskSync: ProjectTaskSync
 
     override fun onCreate() {
         super.onCreate()
@@ -35,6 +37,7 @@ class taskflowapplication : Application() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val dayStart = settingsRepo.getDayStartHourSync()
             dayCloser.closeDaysUpTo(logicalDateNow(dayStart) - 1)
+            projectTaskSync.syncAll(notify = false)
             coordinator.rescheduleAll()
             coordinator.refreshNotifications()
             focusManager.restore()
