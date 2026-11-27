@@ -7,7 +7,15 @@ import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.data.entities.TaskReminderEntity
 import com.example.taskflow.data.repositories.SettingsRepository
 import com.example.taskflow.data.repositories.TaskRepository
+import com.example.taskflow.data.repositories.ProjectRepository
 import com.example.taskflow.domain.logicalDateNow
+import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.TrackingMode
+import com.example.taskflow.domain.effectiveProjectKind
+import com.example.taskflow.domain.effectiveTrackingMode
+import com.example.taskflow.domain.isProjectPartKey
+import com.example.taskflow.focus.FocusManager
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +31,9 @@ import javax.inject.Inject
 class TasksViewModel @Inject constructor(
     private val repository: TaskRepository,
     private val settingsRepo: SettingsRepository,
-    private val focusLogDao: FocusLogDao
+    private val focusLogDao: FocusLogDao,
+    private val focusManager: FocusManager,
+    private val projectRepository: ProjectRepository
 ) : ViewModel() {
 
     private val ticker = flow {
@@ -45,6 +55,36 @@ class TasksViewModel @Inject constructor(
 
     fun setSortMode(mode: String) {
         viewModelScope.launch { settingsRepo.setTaskSortMode(mode) }
+    }
+
+    // true si completar esta tarea es adelantar trabajo de un proyecto simple con seguimiento dinamico
+    suspend fun isPlanAdvance(task: TaskEntity, today: Long): Boolean {
+        val key = task.projectKey ?: return false
+        val date = task.date ?: return false
+        val projectId = task.projectId ?: return false
+        if (task.isCompleted || date <= today || !isProjectPartKey(key)) return false
+        val project = projectRepository.getProject(projectId) ?: return false
+        return effectiveProjectKind(project.kind) == ProjectKind.SIMPLE &&
+            effectiveTrackingMode(project.trackingMode) == TrackingMode.DYNAMIC
+    }
+
+    // Completa una tarea adelantada y replanifica: la tarea pasa a hoy con clave marcada "~",
+    // asi sus minutos cuentan como hechos y el resto del plan rellena el hueco.
+    fun completeAdvanceReplanning(task: TaskEntity, today: Long) {
+        viewModelScope.launch {
+            val key = task.projectKey ?: return@launch
+            val moved = task.copy(date = today, projectKey = key + "~")
+            repository.updateTask(moved)
+            repository.setCompleted(moved, true)
+        }
+    }
+
+    // Arranca un enfoque ligado a la hoja de un proyecto (tarea materializada por un proyecto)
+    fun startProjectFocus(nodeId: Long) {
+        viewModelScope.launch {
+            val minutes = settingsRepo.pomodoroFocusFlow.first()
+            focusManager.startForProjectNode(nodeId, minutes)
+        }
     }
 
     suspend fun loadReminders(taskId: Long): List<TaskReminderEntity> = repository.getTaskReminders(taskId)

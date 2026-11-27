@@ -65,7 +65,7 @@ class SchedulingCoordinatorImpl @Inject constructor(
 
     override suspend fun refreshNotifications(): Unit = mutex.withLock {
         notificationRefresher.refreshAll()
-        projectNotifier.refreshToday()
+        projectNotifier.cancelLegacyToday()
         projectNotifier.checkRisks()
         widgetUpdater.updateAll()
         achievementManager.check()

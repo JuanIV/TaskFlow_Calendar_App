@@ -10,6 +10,9 @@ import com.example.taskflow.data.entities.ProjectNodeEntity
 import com.example.taskflow.data.entities.ProjectDependencyEntity
 import com.example.taskflow.data.entities.ProjectDailyLogEntity
 import com.example.taskflow.data.entities.ProjectCellAssignmentEntity
+import com.example.taskflow.data.entities.TaskEntity
+import com.example.taskflow.domain.isProjectPartKey
+import com.example.taskflow.domain.isProjectCellKey
 import com.example.taskflow.domain.ProjectKind
 import com.example.taskflow.domain.isValidProjectKind
 import com.example.taskflow.domain.effectiveProjectKind
@@ -178,7 +181,8 @@ class ProjectRepository @Inject constructor(
                         deadlineDate = form.deadlineDate,
                         dailyCapacityMinutes = form.capacityMinutes,
                         workingDaysMask = form.workingDaysMask,
-                        kind = form.kind
+                        kind = form.kind,
+                        trackingMode = effectiveTrackingMode(form.trackingMode)
                     )
                 )
                 projectDao.deleteExcludedDays(existing.id)
@@ -316,6 +320,7 @@ class ProjectRepository @Inject constructor(
             if (draftCheck != OpResult.OK) return@withTransaction draftCheck
             if (parent != null && !hasChildren(nodes, parent.id)) {
                 nodeDao.updateNode(leafToGroup(parent))
+                database.projectCellDao().deleteForNode(parent.id)
             }
             val nextOrder = (childrenOfNode(nodes, parentId).maxOfOrNull { it.sortOrder } ?: -1) + 1
             nodeDao.insertNode(newNodeEntity(projectId, parentId, draft, nextOrder, nowMs))
@@ -393,6 +398,7 @@ class ProjectRepository @Inject constructor(
                 val check = checkCanHaveChildren(nodes, newParent)
                 if (check != OpResult.OK) return@withTransaction check
                 changed[newParent.id] = leafToGroup(newParent)
+                database.projectCellDao().deleteForNode(newParent.id)
             }
             val oldParentId = target.parentId
             if (oldParentId != null && oldParentId != newParentId) {
@@ -415,7 +421,7 @@ class ProjectRepository @Inject constructor(
     }
 
     // Completa o reabre una hoja o un hito. Sobre un grupo devuelve IS_GROUP.
-    suspend fun setNodeCompleted(nodeId: Long, completed: Boolean, actualMinutes: Int?, nowMs: Long): OpResult {
+    suspend fun setNodeCompleted(nodeId: Long, completed: Boolean, actualMinutes: Int?, nowMs: Long, reopenSweep: Boolean = true): OpResult {
         var pid = 0L
         val r = database.withTransaction<OpResult> {
             val node = nodeDao.getNodeById(nodeId) ?: return@withTransaction OpResult.NOT_FOUND
@@ -436,7 +442,7 @@ class ProjectRepository @Inject constructor(
             OpResult.OK
         }
         if (r == OpResult.OK && pid != 0L) {
-            taskSync.syncProject(pid, if (completed) null else nodeId)
+            taskSync.syncProject(pid, if (completed || !reopenSweep) null else nodeId)
         }
         return r
     }
@@ -479,6 +485,55 @@ class ProjectRepository @Inject constructor(
         val existing = log.getForNodeAndDay(nodeId, today)
         log.upsert(mergeDailyLog(existing, nodeId, today, existing?.plannedMinutes ?: minutes, (existing?.doneMinutes ?: 0) + done))
         taskSync.syncProject(entity.projectId)
+    }
+
+    // Reabre una hoja SIMPLE descontando los minutos de una parte que el usuario desmarca.
+    suspend fun reopenPart(nodeId: Long, minutes: Int) {
+        val entity = nodeDao.getNodeById(nodeId) ?: return
+        if (isZeroLength(entity.toPlanNode())) return
+        val wasCompleted = entity.completed
+        nodeDao.updateNode(
+            entity.copy(
+                doneMinutes = maxOf(0, entity.doneMinutes - minutes),
+                completed = false,
+                completedAt = null,
+                actualMinutes = null
+            )
+        )
+        taskSync.syncProject(entity.projectId, if (wasCompleted) nodeId else null)
+    }
+
+    // Propaga a su nodo el completado o la reapertura de una tarea materializada por un proyecto.
+    // Partes (SIMPLE dinamico): suman o restan minutos. Celdas (avanzado) y sueltas: completan o reabren la hoja.
+    // Recordatorios diarios (sin nodo): no afectan a ningun nodo.
+    suspend fun onProjectTaskToggled(task: TaskEntity, completed: Boolean, nowMs: Long, today: Long) {
+        val key = task.projectKey ?: return
+        val nodeId = task.projectNodeId ?: return
+        if (isProjectPartKey(key)) {
+            val minutes = task.estimatedMinutes ?: 0
+            if (completed) completeTodayPart(nodeId, minutes, nowMs, today) else reopenPart(nodeId, minutes)
+        } else if (isProjectCellKey(key)) {
+            onCellTaskToggled(nodeId, completed, nowMs)
+        } else {
+            setNodeCompleted(nodeId, completed, null, nowMs)
+        }
+    }
+
+    // Tarea de una celda de un proyecto avanzado: completarla es haber trabajado ese dia en el objetivo.
+    // El objetivo solo se completa cuando no queda ninguna tarea de celda pendiente.
+    // Reabrir una tarea reabre el objetivo si estaba completado (sin borrar el resto de tareas hechas).
+    private suspend fun onCellTaskToggled(nodeId: Long, completed: Boolean, nowMs: Long) {
+        val node = nodeDao.getNodeById(nodeId) ?: return
+        if (completed) {
+            if (node.completed) return
+            val cellTasks = database.taskDao().getProjectTasksSync(node.projectId).filter {
+                val k = it.projectKey
+                it.projectNodeId == nodeId && it.deletedAt == null && k != null && isProjectCellKey(k)
+            }
+            if (cellTasks.none { !it.isCompleted }) setNodeCompleted(nodeId, true, null, nowMs)
+        } else if (node.completed) {
+            setNodeCompleted(nodeId, false, null, nowMs, false)
+        }
     }
 
     // Adelantar a hoy (RF-19)
@@ -678,26 +733,9 @@ class ProjectRepository @Inject constructor(
 
     suspend fun getActiveProjectsOnce(): List<ProjectEntity> = projectDao.getActiveProjectsSync()
 
-    // Suma minutos de enfoque al progreso de una hoja de un proyecto SIMPLE, y los registra en el log del dia.
-    // En proyectos avanzados no hace nada (el enfoque ya se registra en focus_logs).
+    // El enfoque ya se registra en focus_logs. Ya no suma progreso al objetivo: un objetivo solo
+    // avanza al completar sus tareas, para que el reparto no cambie por tiempo de enfoque.
     suspend fun recordFocusMinutes(nodeId: Long, day: Long, minutes: Int, nowMs: Long) {
-        val entity = nodeDao.getNodeById(nodeId) ?: return
-        val project = projectDao.getProjectById(entity.projectId) ?: return
-        if (effectiveProjectKind(project.kind) == ProjectKind.ADVANCED) return
-        if (isZeroLength(entity.toPlanNode())) return
-        markPartDone(nodeId, minutes, nowMs)
-        val log = database.projectDailyLogDao()
-        val existing = log.getForNodeAndDay(nodeId, day)
-        log.upsert(
-            mergeDailyLog(
-                existing,
-                nodeId,
-                day,
-                existing?.plannedMinutes ?: 0,
-                (existing?.doneMinutes ?: 0) + minutes
-            )
-        )
-        taskSync.syncProject(entity.projectId)
     }
 
     // ---------- Proyectos avanzados (fase 9) ----------
@@ -705,6 +743,21 @@ class ProjectRepository @Inject constructor(
     // Asignaciones manuales de dias de un proyecto
     suspend fun getAssignments(projectId: Long): List<ProjectCellAssignmentEntity> =
         database.projectCellDao().getForProject(projectId)
+
+    // Pares (nodo, dia) cuya tarea materializada de celda esta completada
+    suspend fun getCompletedCellTasks(projectId: Long): Set<Pair<Long, Long>> =
+        database.taskDao().getProjectTasksSync(projectId)
+            .filter { it.isCompleted && it.deletedAt == null }
+            .mapNotNull { t ->
+                val key = t.projectKey
+                val node = t.projectNodeId
+                val day = t.date
+                if (key != null && node != null && day != null && isProjectCellKey(key)) Pair(node, day) else null
+            }
+            .toSet()
+
+    fun observeProjectTasks(projectId: Long): Flow<List<TaskEntity>> =
+        database.taskDao().observeProjectTasks(projectId)
 
     fun observeAssignments(projectId: Long): Flow<List<ProjectCellAssignmentEntity>> =
         database.projectCellDao().observeForProject(projectId)

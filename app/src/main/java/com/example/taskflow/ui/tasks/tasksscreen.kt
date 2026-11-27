@@ -32,7 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.taskflow.R
-import com.example.taskflow.ui.projects.ProjectTodayViewModel
+import com.example.taskflow.domain.isProjectDateLocked
 import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.domain.formatMinute
 import com.example.taskflow.ui.components.CustomDatePickerDialog
@@ -57,8 +57,6 @@ fun TasksScreen(
     val sortMode by viewModel.sortMode.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val projectToday: ProjectTodayViewModel = hiltViewModel()
-    val projectItems by projectToday.items.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var taskEditing by remember { mutableStateOf<TaskEntity?>(null) }
@@ -66,6 +64,7 @@ fun TasksScreen(
     var parentPrompt by remember { mutableStateOf<TaskEntity?>(null) }
     var subtaskParent by remember { mutableStateOf<TaskEntity?>(null) }
     var pickDateTask by remember { mutableStateOf<TaskEntity?>(null) }
+    var advancePrompt by remember { mutableStateOf<TaskEntity?>(null) }
 
     val deletedMsg = stringResource(R.string.s2_task_deleted)
     val movedMsg = stringResource(R.string.s2_task_moved)
@@ -88,7 +87,13 @@ fun TasksScreen(
         if (!task.isCompleted && subtasksOf(task.id).any { !it.isCompleted }) {
             parentPrompt = task
         } else {
-            viewModel.toggleTaskCompletion(task)
+            scope.launch {
+                if (viewModel.isPlanAdvance(task, todayEpoch)) {
+                    advancePrompt = task
+                } else {
+                    viewModel.toggleTaskCompletion(task)
+                }
+            }
         }
     }
 
@@ -132,11 +137,19 @@ fun TasksScreen(
             dragModifier = handle,
             onToggle = { handleToggle(task) },
             onClick = { taskEditing = task; showDialog = true },
-            onDelete = { handleDeleteId(task.id) },
-            onMoveTo = { handleMove(task, it) },
-            onPickDate = { pickDateTask = task },
+            onDelete = { if (task.projectKey == null) handleDeleteId(task.id) },
+            onMoveTo = { if (!task.isProjectDateLocked()) handleMove(task, it) },
+            onPickDate = { if (!task.isProjectDateLocked()) pickDateTask = task },
             onAddSubtask = { subtaskParent = task },
-            onStartFocus = { onOpenFocus(task.id) }
+            onStartFocus = {
+                val projectNode = task.projectNodeId
+                if (projectNode != null) {
+                    viewModel.startProjectFocus(projectNode)
+                    onOpenFocus(-1L)
+                } else {
+                    onOpenFocus(task.id)
+                }
+            }
         )
     }
 
@@ -179,16 +192,6 @@ fun TasksScreen(
                 if (overdue.isNotEmpty()) {
                     item(key = "hdr_overdue") { SectionHeader(stringResource(R.string.s2_sec_overdue), MaterialTheme.colorScheme.error) }
                     items(overdue, key = { "o${it.id}" }) { task -> card(task, false, null) }
-                }
-                if (projectItems.isNotEmpty()) {
-                    item(key = "hdr_projects") { SectionHeader(stringResource(R.string.p1d_section_projects), MaterialTheme.colorScheme.primary) }
-                    items(projectItems, key = { "p${it.projectId}_${it.nodeId}_${it.partIndex}" }) { item ->
-                        ProjectTodayRow(
-                            item = item,
-                            onComplete = { projectToday.completePart(item) },
-                            onFocus = { projectToday.startFocus(item) }
-                        )
-                    }
                 }
                 if (todayList.isNotEmpty()) {
                     item(key = "hdr_today") { SectionHeader(stringResource(R.string.s2_sec_today), MaterialTheme.colorScheme.primary) }
@@ -255,6 +258,24 @@ fun TasksScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.toggleTaskCompletion(task); parentPrompt = null }) { Text(stringResource(R.string.s2_only_this)) }
+            }
+        )
+    }
+
+    advancePrompt?.let { task ->
+        AlertDialog(
+            onDismissRequest = { advancePrompt = null },
+            title = { Text(stringResource(R.string.pt_advance_title)) },
+            text = { Text(stringResource(R.string.pt_advance_msg)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.completeAdvanceReplanning(task, todayEpoch); advancePrompt = null }) {
+                    Text(stringResource(R.string.pt_advance_reschedule))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.toggleTaskCompletion(task); advancePrompt = null }) {
+                    Text(stringResource(R.string.pt_advance_keep))
+                }
             }
         )
     }
@@ -447,9 +468,11 @@ fun TaskCard(
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.s2_more))
                     }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_today)) }, onClick = { menuExpanded = false; onMoveTo(todayEpoch) })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_tomorrow)) }, onClick = { menuExpanded = false; onMoveTo(todayEpoch + 1) })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_pick)) }, onClick = { menuExpanded = false; onPickDate() })
+                        if (!task.isProjectDateLocked()) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_today)) }, onClick = { menuExpanded = false; onMoveTo(todayEpoch) })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_tomorrow)) }, onClick = { menuExpanded = false; onMoveTo(todayEpoch + 1) })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.s2_move_pick)) }, onClick = { menuExpanded = false; onPickDate() })
+                        }
                         DropdownMenuItem(text = { Text(stringResource(R.string.s3_focus_start)) }, onClick = { menuExpanded = false; onStartFocus() })
                     }
                 }

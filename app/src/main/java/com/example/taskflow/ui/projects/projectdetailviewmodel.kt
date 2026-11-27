@@ -36,8 +36,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.taskflow.domain.GRID_EXTEND_DAYS
+import com.example.taskflow.domain.MAX_GRID_DAYS
+import com.example.taskflow.domain.extendedGridDays
+import com.example.taskflow.domain.initialGridDays
+import com.example.taskflow.domain.logicalDayOfMillis
+import java.time.DayOfWeek
+import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
@@ -78,6 +86,37 @@ class ProjectDetailViewModel @Inject constructor(
 
     private val _gridDays = MutableStateFlow<GridDays?>(null)
     val gridDays: StateFlow<GridDays?> = _gridDays.asStateFlow()
+
+    private var gridExtraBack = 0
+    private var gridExtraForward = 0
+    private var gridBase: GridDays? = null
+    private var gridFirstDay: DayOfWeek = DayOfWeek.MONDAY
+    private var gridCompletionDays: Map<Long, Long> = emptyMap()
+    private var gridCompletedCells: Set<Pair<Long, Long>> = emptySet()
+
+    fun extendGridForward() {
+        val base = gridBase ?: return
+        if (base.size + gridExtraBack + gridExtraForward >= MAX_GRID_DAYS) return
+        gridExtraForward += GRID_EXTEND_DAYS
+        applyGridRange()
+    }
+
+    fun extendGridBackward() {
+        val base = gridBase ?: return
+        if (base.size + gridExtraBack + gridExtraForward >= MAX_GRID_DAYS) return
+        gridExtraBack += GRID_EXTEND_DAYS
+        applyGridRange()
+    }
+
+    private fun applyGridRange() {
+        val base = gridBase ?: return
+        _gridDays.value = extendedGridDays(base, gridExtraBack, gridExtraForward)
+        if (_editMode.value) {
+            recomputePendingRows()
+        } else {
+            viewModelScope.launch { refreshAll(project.value, nodes.value, dependencies.value) }
+        }
+    }
 
     private val _weekView = MutableStateFlow(false)
     val weekView: StateFlow<Boolean> = _weekView.asStateFlow()
@@ -148,7 +187,10 @@ class ProjectDetailViewModel @Inject constructor(
         val days = _gridDays.value ?: return
         val leafPlanned = assignmentsToLeafPlanned(_pendingCells.value)
         val leafCompleted = nodes.value.filter { it.completed }.map { it.id }.toSet()
-        _gridRows.value = buildGridRows(nodes.value, days, leafPlanned, leafCompleted, _collapsedGrid.value)
+        _gridRows.value = buildGridRows(
+            nodes.value, days, leafPlanned, leafCompleted, _collapsedGrid.value,
+            gridCompletionDays, gridCompletedCells
+        )
     }
 
     val firstDayOfWeekValue: StateFlow<Int> = settingsRepo.firstDayFlow
@@ -178,16 +220,29 @@ class ProjectDetailViewModel @Inject constructor(
         _deviation.value = com.example.taskflow.domain.deviationSummary(currentNodes)
         if (effectiveProjectKind(current?.kind) == ProjectKind.ADVANCED) {
             val p = current!!
-            val days = gridDaysOf(
-                p.startDate,
-                _plan.value?.expectedEndDay,
-                p.deadlineDate,
-                today
-            )
-            val leafPlanned = leafPlannedFromAssignments(repository.getAssignments(projectId))
+            val assignments = repository.getAssignments(projectId)
+            val leafPlanned = leafPlannedFromAssignments(assignments)
             val leafCompleted = currentNodes.filter { it.completed }.map { it.id }.toSet()
+            val dayStart = settingsRepo.getDayStartHourSync()
+            val zone = ZoneId.systemDefault()
+            gridFirstDay = DayOfWeek.of(settingsRepo.firstDayFlow.first().coerceIn(1, 7))
+            gridCompletionDays = currentNodes
+                .filter { it.completed }
+                .mapNotNull { n -> n.completedAt?.let { Pair(n.id, logicalDayOfMillis(it, dayStart, zone)) } }
+                .toMap()
+            gridCompletedCells = repository.getCompletedCellTasks(projectId)
+            val base = initialGridDays(p.startDate, assignments.map { it.epochDay }, p.deadlineDate, today, gridFirstDay)
+            gridBase = base
+            val days = extendedGridDays(base, gridExtraBack, gridExtraForward)
             _gridDays.value = days
-            _gridRows.value = buildGridRows(currentNodes, days, leafPlanned, leafCompleted, _collapsedGrid.value)
+            if (_editMode.value) {
+                recomputePendingRows()
+            } else {
+                _gridRows.value = buildGridRows(
+                    currentNodes, days, leafPlanned, leafCompleted, _collapsedGrid.value,
+                    gridCompletionDays, gridCompletedCells
+                )
+            }
         } else {
             _gridDays.value = null
             _gridRows.value = emptyList()
@@ -295,7 +350,7 @@ class ProjectDetailViewModel @Inject constructor(
     // Cada cambio del proyecto, de sus nodos o de sus dependencias recalcula el plan.
     init {
         viewModelScope.launch {
-            combine(project, nodes, dependencies) { p, n, d -> Triple(p, n, d) }.collect { t ->
+            combine(project, nodes, dependencies, repository.observeProjectTasks(projectId)) { p, n, d, _ -> Triple(p, n, d) }.collect { t ->
                 refreshAll(t.first, t.second, t.third)
             }
         }

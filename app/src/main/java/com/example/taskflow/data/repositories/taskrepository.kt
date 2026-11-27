@@ -47,6 +47,9 @@ class TaskRepository @Inject constructor(
     }
 
     suspend fun softDeleteTask(taskId: Long) {
+        val task = taskDao.getTaskById(taskId)
+        // Las tareas materializadas por un proyecto no se borran a mano: reaparecerian
+        if (task != null && task.projectKey != null) return
         taskDao.softDeleteTaskAndSubtasks(taskId, System.currentTimeMillis())
         coordinator.onDataChanged()
     }
@@ -57,7 +60,8 @@ class TaskRepository @Inject constructor(
     }
 
     suspend fun markPending(taskId: Long) {
-        taskDao.markPending(taskId)
+        val task = taskDao.getTaskById(taskId)
+        if (task != null) completionHelper.uncomplete(task) else taskDao.markPending(taskId)
         coordinator.onDataChanged()
     }
 

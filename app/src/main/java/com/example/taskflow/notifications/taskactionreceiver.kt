@@ -11,6 +11,7 @@ import com.example.taskflow.data.repositories.SettingsRepository
 import com.example.taskflow.domain.TaskCompletionHelper
 import com.example.taskflow.domain.canToggleInSequence
 import com.example.taskflow.domain.getTodayTasksForNotification
+import com.example.taskflow.domain.isProjectDateLocked
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.orderForSequence
 import com.example.taskflow.domain.taskAppliesOn
@@ -63,7 +64,7 @@ class TaskActionReceiver : BroadcastReceiver() {
                         val ids = settingsRepo.getUndoBatchSync().first.split(",").mapNotNull { it.toLongOrNull() }
                         ids.forEach { id ->
                             val task = taskDao.getTaskById(id)
-                            if (task != null) taskDao.updateTask(task.copy(isCompleted = false, completedAt = null))
+                            if (task != null) completionHelper.uncomplete(task)
                         }
                         settingsRepo.setUndoBatch("", "")
                         settingsRepo.setUndoExpires(0L)
@@ -71,7 +72,7 @@ class TaskActionReceiver : BroadcastReceiver() {
                     NotificationActions.POSTPONE_TODAY -> {
                         val overdueMode = settingsRepo.overdueModeFlow.first()
                         val pending = getTodayTasksForNotification(taskDao.getTasksUpToDateSync(todayEpoch), todayEpoch, overdueMode)
-                        pending.forEach {
+                        pending.filter { !it.isProjectDateLocked() }.forEach {
                             taskDao.updateTask(it.copy(date = todayEpoch + 1, originalDate = it.originalDate ?: it.date))
                         }
                     }
@@ -109,7 +110,7 @@ class TaskActionReceiver : BroadcastReceiver() {
                     NotificationActions.POSTPONE_ONE_TASK -> {
                         val id = intent.getLongExtra(NotificationActions.EXTRA_TASK_ID, -1L)
                         val task = taskDao.getTaskById(id)
-                        if (task != null && task.date != null) {
+                        if (task != null && task.date != null && !task.isProjectDateLocked()) {
                             taskDao.updateTask(task.copy(date = todayEpoch + 1, originalDate = task.originalDate ?: task.date))
                         }
                         notificationManager.cancel(NotificationIds.taskReminder(id))

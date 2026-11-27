@@ -23,6 +23,7 @@ import com.example.taskflow.R
 import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.data.entities.TaskReminderEntity
 import com.example.taskflow.domain.formatMinute
+import com.example.taskflow.domain.isProjectDateLocked
 import com.example.taskflow.ui.components.CustomDatePickerDialog
 import com.example.taskflow.ui.components.CustomTimePickerDialog
 import com.example.taskflow.ui.components.WeekdayToggleRow
@@ -110,6 +111,8 @@ fun TaskDialog(
     var absPickedDay by remember { mutableStateOf<Long?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var recExpanded by remember { mutableStateOf(false) }
+    val isProject = taskToEdit?.projectKey != null
+    val dateLocked = taskToEdit?.isProjectDateLocked() == true
 
     LaunchedEffect(taskToEdit?.id) {
         if (taskToEdit != null) {
@@ -149,7 +152,7 @@ fun TaskDialog(
                         title = { Text(stringResource(if (taskToEdit == null) R.string.s2_task_new else R.string.s2_task_edit)) },
                         navigationIcon = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
                         actions = {
-                            if (taskToEdit != null && onDelete != null) {
+                            if (taskToEdit != null && onDelete != null && !isProject) {
                                 IconButton(onClick = { showDeleteConfirm = true }) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
                                 }
@@ -193,6 +196,7 @@ fun TaskDialog(
                         onValueChange = { title = it; titleError = false },
                         label = { Text(stringResource(R.string.s2_task_title_label)) },
                         isError = titleError,
+                        readOnly = isProject,
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -201,7 +205,7 @@ fun TaskDialog(
                     val d = selectedDate
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.s2_task_date) + ": " + (d?.let { LocalDate.ofEpochDay(it).format(dateFormat) } ?: stringResource(R.string.s2_none)))
-                        OutlinedButton(onClick = { showDatePicker = true }) { Text(stringResource(R.string.change)) }
+                        OutlinedButton(onClick = { showDatePicker = true }, enabled = !dateLocked) { Text(stringResource(R.string.change)) }
                     }
                     if (d != null) {
                         val dm = dueMinute
@@ -247,7 +251,7 @@ fun TaskDialog(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    ExposedDropdownMenuBox(expanded = recExpanded, onExpandedChange = { recExpanded = it }) {
+                    ExposedDropdownMenuBox(expanded = recExpanded, onExpandedChange = { if (!isProject) recExpanded = it }) {
                         OutlinedTextField(
                             value = recLabel,
                             onValueChange = {},

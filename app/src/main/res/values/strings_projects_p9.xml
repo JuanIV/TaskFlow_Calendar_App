@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pt_grid_earlier">← Semanas anteriores</string>
+    <string name="pt_grid_week_label">SEMANA %1$d</string>
+    <string name="pt_grid_week_short">S%1$d</string>
+</resources>

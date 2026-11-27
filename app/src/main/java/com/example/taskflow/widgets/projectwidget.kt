@@ -49,8 +49,10 @@ private suspend fun loadProjectWidget(context: Context, projectId: Long?): Proje
     val project = repo.getProject(projectId) ?: return empty
     if (project.deletedAt != null) return empty
     val plan = repo.loadPlan(projectId, today) ?: return empty
-    val titles = repo.getNodeTitles(projectId)
-    val todayItems = projectTodayItems(projectId, project.name, plan, titles, today)
+    val todayTitle = entry.taskDao().getProjectTasksSync(projectId)
+        .filter { it.date == today && !it.isCompleted }
+        .minByOrNull { it.id }
+        ?.title
     val statusLine = projectStatusMessage(
         context,
         project.status,
@@ -63,7 +65,7 @@ private suspend fun loadProjectWidget(context: Context, projectId: Long?): Proje
         name = project.name,
         progress = plan.progressPercent,
         statusLine = statusLine,
-        todayLine = todayItems.firstOrNull()?.label,
+        todayLine = todayTitle,
         found = true
     )
 }

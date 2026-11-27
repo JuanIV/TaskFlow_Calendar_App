@@ -14,6 +14,8 @@ import com.example.taskflow.domain.ProjectStatus
 import com.example.taskflow.domain.TrackingMode
 import com.example.taskflow.domain.desiredProjectTasks
 import com.example.taskflow.domain.effectiveTrackingMode
+import com.example.taskflow.domain.frozenMinutesByNode
+import com.example.taskflow.domain.priorPartsByNode
 import com.example.taskflow.domain.leafNodeIds
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.reconcileProjectTasks
@@ -146,7 +148,9 @@ class ProjectTaskSync @Inject constructor(
             assignments = assignments,
             retainedMinutes = retainedMinutesByNode(existing, today),
             today = today,
-            dailyPrefix = prefix
+            dailyPrefix = prefix,
+            frozenMinutes = frozenMinutesByNode(existing, today),
+            priorParts = priorPartsByNode(existing, today)
         )
         val leaves = leafNodeIds(nodes)
         val open = nodes.filter { it.id in leaves && !it.completed }.map { it.id }.toSet()

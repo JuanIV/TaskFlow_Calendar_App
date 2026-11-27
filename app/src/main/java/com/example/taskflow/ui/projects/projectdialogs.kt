@@ -51,6 +51,7 @@ import com.example.taskflow.domain.NodeDraft
 import com.example.taskflow.domain.OpResult
 import com.example.taskflow.domain.ProjectFormData
 import com.example.taskflow.domain.ProjectKind
+import com.example.taskflow.domain.TrackingMode
 import com.example.taskflow.domain.cleanNotes
 import com.example.taskflow.domain.epochDayToPickerMillis
 import com.example.taskflow.domain.formatHours
@@ -143,6 +144,7 @@ fun ProjectFormDialog(
     var hoursText by remember { mutableStateOf(formatHours(existing?.dailyCapacityMinutes ?: 240)) }
     var mask by remember { mutableStateOf(existing?.workingDaysMask ?: 31) }
     var kind by remember { mutableStateOf(existing?.kind ?: ProjectKind.SIMPLE) }
+    var trackingMode by remember { mutableStateOf(existing?.trackingMode ?: TrackingMode.DYNAMIC) }
     var excluded by remember { mutableStateOf(existingExcludedDays.sorted()) }
     var showStart by remember { mutableStateOf(false) }
     var showDeadline by remember { mutableStateOf(false) }
@@ -193,14 +195,16 @@ fun ProjectFormDialog(
                     onClear = if (deadline != null) ({ deadline = null }) else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = hoursText,
-                    onValueChange = { hoursText = it },
-                    label = { Text(stringResource(R.string.p1b_field_capacity)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (kind != ProjectKind.ADVANCED) {
+                    OutlinedTextField(
+                        value = hoursText,
+                        onValueChange = { hoursText = it },
+                        label = { Text(stringResource(R.string.p1b_field_capacity)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(stringResource(R.string.p3_kind_label), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -217,6 +221,36 @@ fun ProjectFormDialog(
                 }
                 Text(
                     stringResource(R.string.p3_kind_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(stringResource(R.string.pt_mode_label), style = MaterialTheme.typography.titleSmall)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FilterChip(
+                        selected = trackingMode == TrackingMode.DYNAMIC,
+                        onClick = { trackingMode = TrackingMode.DYNAMIC },
+                        label = { Text(stringResource(R.string.pt_mode_dynamic)) }
+                    )
+                    FilterChip(
+                        selected = trackingMode == TrackingMode.DAILY,
+                        onClick = { trackingMode = TrackingMode.DAILY },
+                        label = { Text(stringResource(R.string.pt_mode_daily)) }
+                    )
+                    FilterChip(
+                        selected = trackingMode == TrackingMode.NONE,
+                        onClick = { trackingMode = TrackingMode.NONE },
+                        label = { Text(stringResource(R.string.pt_mode_none)) }
+                    )
+                }
+                Text(
+                    stringResource(
+                        when (trackingMode) {
+                            TrackingMode.DAILY -> R.string.pt_mode_daily_help
+                            TrackingMode.NONE -> R.string.pt_mode_none_help
+                            else -> R.string.pt_mode_dynamic_help
+                        }
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -256,7 +290,8 @@ fun ProjectFormDialog(
                             capacityMinutes = capacity,
                             workingDaysMask = mask,
                             excludedDays = excluded,
-                            kind = kind
+                            kind = kind,
+                            trackingMode = trackingMode
                         )
                     )
                 }
@@ -308,6 +343,8 @@ fun ProjectFormDialog(
 fun NodeFormDialog(
     existing: ProjectNodeEntity?,
     isGroup: Boolean,
+    showDuration: Boolean = true,
+    showColor: Boolean = true,
     onDismiss: () -> Unit,
     onSave: (NodeDraft) -> Unit
 ) {
@@ -324,8 +361,8 @@ fun NodeFormDialog(
     val draft = NodeDraft(
         title = title.trim(),
         notes = cleanNotes(notes),
-        estimatedMinutes = if (milestone) 0 else minutes,
-        isMilestone = milestone && !isGroup,
+        estimatedMinutes = if (milestone && showDuration) 0 else minutes,
+        isMilestone = milestone && !isGroup && showDuration,
         priority = priority,
         colorArgb = colorArgb,
         notBeforeDate = notBefore
@@ -354,9 +391,9 @@ fun NodeFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (isGroup) {
+                if (isGroup && showDuration) {
                     Text(stringResource(R.string.p1b_node_is_group), style = MaterialTheme.typography.bodySmall)
-                } else {
+                } else if (showDuration) {
                     OutlinedTextField(
                         value = hoursText,
                         onValueChange = { hoursText = it },
@@ -392,15 +429,19 @@ fun NodeFormDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(stringResource(R.string.p1b_color), style = MaterialTheme.typography.titleSmall)
-                ColorRow(selected = colorArgb, onSelect = { colorArgb = it })
-                Spacer(modifier = Modifier.height(8.dp))
-                DateRow(
-                    label = stringResource(R.string.p1b_node_not_before),
-                    value = notBefore?.let { dayText(it) } ?: stringResource(R.string.p1b_none_date),
-                    onChange = { showNotBefore = true },
-                    onClear = if (notBefore != null) ({ notBefore = null }) else null
-                )
+                if (showColor) {
+                    Text(stringResource(R.string.p1b_color), style = MaterialTheme.typography.titleSmall)
+                    ColorRow(selected = colorArgb, onSelect = { colorArgb = it })
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                if (showDuration) {
+                    DateRow(
+                        label = stringResource(R.string.p1b_node_not_before),
+                        value = notBefore?.let { dayText(it) } ?: stringResource(R.string.p1b_none_date),
+                        onChange = { showNotBefore = true },
+                        onClear = if (notBefore != null) ({ notBefore = null }) else null
+                    )
+                }
                 if (errorText != null) {
                     Text(errorText, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }

@@ -106,6 +106,8 @@ fun ProjectDetailScreen(
     var depNodeId by remember { mutableStateOf<Long?>(null) }
     var exportRequested by remember { mutableStateOf(false) }
     var shareGridRequested by remember { mutableStateOf(false) }
+    var treeMode by rememberSaveable { mutableStateOf(false) }
+    var addChildConfirm by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -272,6 +274,13 @@ fun ProjectDetailScreen(
                         }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    FilterChip(
+                        selected = treeMode && !editMode,
+                        onClick = { treeMode = !treeMode },
+                        enabled = !editMode,
+                        label = { Text(stringResource(R.string.pt_tree_mode)) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     if (!editMode) {
                         IconButton(onClick = { viewModel.enterGridEditMode() }) {
                             Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.p6_edit))
@@ -307,8 +316,30 @@ fun ProjectDetailScreen(
                         today = today,
                         firstDay = firstDayOfWeek,
                         onToggleCollapse = { viewModel.toggleCollapsedGrid(it) },
+                        weekOrigin = currentProject.startDate,
+                        onExtendForward = { viewModel.extendGridForward() },
+                        onExtendBackward = { viewModel.extendGridBackward() },
                         editMode = editMode,
-                        onCellTap = { nodeId, day -> viewModel.toggleGridCell(nodeId, day) }
+                        onCellTap = { nodeId, day -> viewModel.toggleGridCell(nodeId, day) },
+                        treeMode = treeMode && !editMode,
+                        onToggleCompleted = { nodeId, done ->
+                            viewModel.setNodeCompleted(nodeId, done, null) { result -> showOpResult(context, result) }
+                        },
+                        onEditNode = { nodeId -> editingNode = nodes.firstOrNull { it.id == nodeId } },
+                        onAddChild = { nodeId ->
+                            val hasCells = gridRows.firstOrNull { it.nodeId == nodeId }?.cells?.any { it.planned } == true
+                            if (hasCells) {
+                                addChildConfirm = nodeId
+                            } else {
+                                newNodeParent = nodeId
+                                showNewNode = true
+                            }
+                        },
+                        onMoveNode = { nodeId -> movingNodeId = nodeId },
+                        onDeleteNode = { nodeId -> deletingNodeId = nodeId },
+                        onSiblingMove = { nodeId, delta ->
+                            viewModel.moveSibling(nodeId, delta) { result -> showOpResult(context, result) }
+                        }
                     )
                 }
                 if (shareGridRequested) {
@@ -425,6 +456,8 @@ fun ProjectDetailScreen(
         NodeFormDialog(
             existing = null,
             isGroup = false,
+            showDuration = !advanced,
+            showColor = !advanced || newNodeParent == null,
             onDismiss = { showNewNode = false },
             onSave = { draft ->
                 viewModel.addNode(newNodeParent, draft) { result ->
@@ -439,11 +472,32 @@ fun ProjectDetailScreen(
         NodeFormDialog(
             existing = editing,
             isGroup = hasChildren(nodes, editing.id),
+            showDuration = !advanced,
+            showColor = !advanced || editing.parentId == null,
             onDismiss = { editingNode = null },
             onSave = { draft ->
                 viewModel.updateNode(editing.id, draft) { result ->
                     if (result == OpResult.OK) editingNode = null else showOpResult(context, result)
                 }
+            }
+        )
+    }
+
+    val confirmChild = addChildConfirm
+    if (confirmChild != null) {
+        AlertDialog(
+            onDismissRequest = { addChildConfirm = null },
+            title = { Text(stringResource(R.string.pt_child_cells_title)) },
+            text = { Text(stringResource(R.string.pt_child_cells_msg)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    addChildConfirm = null
+                    newNodeParent = confirmChild
+                    showNewNode = true
+                }) { Text(stringResource(R.string.pt_child_cells_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { addChildConfirm = null }) { Text(stringResource(R.string.p1c_cancel)) }
             }
         )
     }

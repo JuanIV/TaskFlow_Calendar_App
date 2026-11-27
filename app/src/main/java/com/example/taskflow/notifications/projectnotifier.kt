@@ -8,10 +8,8 @@ import androidx.core.app.NotificationCompat
 import com.example.taskflow.R
 import com.example.taskflow.data.repositories.ProjectRepository
 import com.example.taskflow.data.repositories.SettingsRepository
-import com.example.taskflow.domain.ProjectTodayItem
 import com.example.taskflow.domain.RiskAlert
 import com.example.taskflow.domain.logicalDateNow
-import com.example.taskflow.domain.projectTodayItems
 import com.example.taskflow.domain.riskAlertFor
 import com.example.taskflow.mainactivity
 import com.example.taskflow.scheduling.AlarmContract
@@ -28,7 +26,6 @@ class ProjectNotifier @Inject constructor(
     private companion object {
         const val TODAY_ID = 6_000_001
         const val RISK_BASE = 6_100_000
-        const val MAX_ROWS = 5
     }
 
     private val manager: NotificationManager
@@ -45,33 +42,10 @@ class ProjectNotifier @Inject constructor(
         )
     }
 
-    // Notificacion fija con las partes de hoy de todos los proyectos activos
-    suspend fun refreshToday() {
-        val today = logicalDateNow(settingsRepo.getDayStartHourSync())
-        val items = ArrayList<ProjectTodayItem>()
-        for ((project, plan) in repository.getActiveProjectPlansSync(today)) {
-            val titles = repository.getNodeTitles(project.id)
-            items.addAll(projectTodayItems(project.id, project.name, plan, titles, today))
-        }
-        if (items.isEmpty()) {
-            manager.cancel(TODAY_ID)
-            return
-        }
-        val lines = items.take(MAX_ROWS).map { it.label + " (" + com.example.taskflow.domain.formatHours(it.minutes) + " h)" }
-        val style = NotificationCompat.InboxStyle()
-        lines.forEach { style.addLine(it) }
-        if (items.size > MAX_ROWS) {
-            style.addLine(context.getString(R.string.p1d_and_more, items.size - MAX_ROWS))
-        }
-        val builder = NotificationCompat.Builder(context, NotificationChannels.PROJECT_TODAY)
-            .setSmallIcon(R.drawable.ic_stat_taskflow)
-            .setContentTitle(context.getString(R.string.p1d_today_title))
-            .setContentText(lines.first())
-            .setStyle(style)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(openProjects(TODAY_ID, "projects"))
-        manager.notify(TODAY_ID, builder.build())
+    // La notificacion fija propia de proyectos se retiro: las tareas de proyecto ya salen en la
+    // notificacion de tareas de hoy. Esto limpia la que pudiera haber quedado de versiones anteriores.
+    fun cancelLegacyToday() {
+        manager.cancel(TODAY_ID)
     }
 
     // Compara el estado de cada proyecto con el ultimo notificado y avisa si empeora

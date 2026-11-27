@@ -83,4 +83,7 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE projectId = :projectId")
     suspend fun deleteProjectTasks(projectId: Long)
+
+    @Query("SELECT * FROM tasks WHERE projectId = :projectId AND projectKey IS NOT NULL")
+    fun observeProjectTasks(projectId: Long): Flow<List<TaskEntity>>
 }

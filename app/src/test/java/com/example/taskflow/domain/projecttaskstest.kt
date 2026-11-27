@@ -84,7 +84,7 @@ class ProjectTasksTest {
         val result = desired(project(), listOf(node(1, minutes = 360)))
         assertEquals(2, result.size)
         assertEquals("P1:N1:D" + mon, result[0].key)
-        assertEquals("Web: T1 (parte 1/2)", result[0].title)
+        assertEquals("Web: T1 (1/2)", result[0].title)
         assertEquals(mon, result[0].date)
         assertEquals(240, result[0].estimatedMinutes)
         assertEquals("P1:N1:D" + (mon + 1), result[1].key)
@@ -158,7 +158,7 @@ class ProjectTasksTest {
         )
         val result = desired(project(kind = ProjectKind.ADVANCED), nodes, cells)
         assertEquals(listOf("P1:N1:C" + mon, "P1:N1:C" + (mon + 1)), result.map { it.key })
-        assertEquals("Web: T1", result[0].title)
+        assertEquals("Web: T1 (2/3)", result[0].title)
     }
 
     @Test

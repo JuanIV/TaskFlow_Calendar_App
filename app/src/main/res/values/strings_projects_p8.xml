@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pt_tree_mode">Árbol</string>
+    <string name="pt_child_cells_title">Añadir subtarea</string>
+    <string name="pt_child_cells_msg">Esta tarea tiene días pintados en la rejilla. Al convertirse en grupo se borrarán sus días. ¿Continuar?</string>
+    <string name="pt_child_cells_ok">Continuar</string>
+</resources>

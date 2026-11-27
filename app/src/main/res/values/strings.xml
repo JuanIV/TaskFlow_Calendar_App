@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TaskFlow Dev</string>
+    <string name="app_name">TaskFlow</string>
     <string name="tab_calendar">Calendario</string>
     <string name="tab_tasks">Tareas sueltas</string>
     <string name="tab_routines">Rutinas</string>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pt_advance_title">Has adelantado trabajo</string>
+    <string name="pt_advance_msg">Esta tarea estaba prevista para otro día. ¿Quieres replanificar para llenar el hueco que deja, o mantener el plan original?</string>
+    <string name="pt_advance_reschedule">Replanificar</string>
+    <string name="pt_advance_keep">Mantener plan</string>
+</resources>

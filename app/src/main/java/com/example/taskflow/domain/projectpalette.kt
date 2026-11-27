@@ -50,3 +50,15 @@ fun cellColor(rootIndex: Int, depth: Int, completed: Boolean): Int {
     val row = rowColor(rootIndex, depth)
     return if (completed) lightenArgb(row, 0.65f) else row
 }
+
+// Color de una fila: el color elegido para su raiz (o el automatico por posicion), aclarado por profundidad
+fun rowColorFor(rootColorArgb: Int?, rootIndex: Int, depth: Int): Int {
+    val base = rootColorArgb ?: rootBaseColor(rootIndex)
+    val amount = (depth * LIGHTEN_STEP).coerceAtMost(MAX_LIGHTEN)
+    return lightenArgb(base, amount)
+}
+
+fun cellColorFor(rootColorArgb: Int?, rootIndex: Int, depth: Int, completed: Boolean): Int {
+    val row = rowColorFor(rootColorArgb, rootIndex, depth)
+    return if (completed) lightenArgb(row, 0.65f) else row
+}

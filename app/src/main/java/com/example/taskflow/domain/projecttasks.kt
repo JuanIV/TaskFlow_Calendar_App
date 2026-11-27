@@ -66,6 +66,41 @@ fun retainedMinutesByNode(existing: List<TaskEntity>, today: Long): Map<Long, In
     return out
 }
 
+fun isProjectCellKey(key: String): Boolean = key.contains(":N") && key.contains(":C")
+
+// Minutos de partes ya completadas cuyo dia es hoy o posterior (trabajo hecho en plan o adelantado).
+// El planificador NO los descuenta: asi el reparto de hoy en adelante no cambia al completarlas.
+// Las claves acabadas en "~" (adelanto con replanificacion) quedan fuera: esos minutos si se descuentan.
+fun frozenMinutesByNode(existing: List<TaskEntity>, today: Long): Map<Long, Int> {
+    val out = HashMap<Long, Int>()
+    for (t in existing) {
+        val key = t.projectKey ?: continue
+        val node = t.projectNodeId ?: continue
+        val d = t.date ?: continue
+        if (!t.isCompleted || t.deletedAt != null || d < today) continue
+        if (!isProjectPartKey(key) || key.endsWith("~")) continue
+        out[node] = (out[node] ?: 0) + (t.estimatedMinutes ?: 0)
+    }
+    return out
+}
+
+// Tareas de parte ya ejecutadas o atrasadas de cada objetivo, para numerar x/y
+fun priorPartsByNode(existing: List<TaskEntity>, today: Long): Map<Long, Int> {
+    val out = HashMap<Long, Int>()
+    for (t in existing) {
+        val key = t.projectKey ?: continue
+        val node = t.projectNodeId ?: continue
+        if (t.deletedAt != null || !isProjectPartKey(key)) continue
+        val d = t.date ?: continue
+        if (d < today || key.endsWith("~")) out[node] = (out[node] ?: 0) + 1
+    }
+    return out
+}
+
+// "Proyecto: Objetivo (x/y)" si el objetivo lleva varios dias, o "Proyecto: Objetivo" si solo uno
+fun projectObjectiveTitle(projectName: String, title: String, x: Int, y: Int): String =
+    if (y > 1) projectName + ": " + title + " (" + x + "/" + y + ")" else projectName + ": " + title
+
 // Tareas que el proyecto desea tener segun tipo (kind) y modo de seguimiento.
 // Un proyecto no activo, borrado o plantilla no desea nada.
 fun desiredProjectTasks(
@@ -76,7 +111,9 @@ fun desiredProjectTasks(
     assignments: List<ProjectCellAssignmentEntity>,
     retainedMinutes: Map<Long, Int>,
     today: Long,
-    dailyPrefix: String
+    dailyPrefix: String,
+    frozenMinutes: Map<Long, Int> = emptyMap(),
+    priorParts: Map<Long, Int> = emptyMap()
 ): List<DesiredTask> {
     if (project.deletedAt != null || project.isTemplate || project.status != ProjectStatus.ACTIVE) {
         return emptyList()
@@ -89,7 +126,7 @@ fun desiredProjectTasks(
         TrackingMode.NONE -> looseTasks(project, nodes, advanced)
         else ->
             if (advanced) advancedCells(project, nodes, assignments, today)
-            else simpleParts(project, nodes, dependencies, excludedDays, retainedMinutes, today)
+            else simpleParts(project, nodes, dependencies, excludedDays, retainedMinutes, frozenMinutes, priorParts, today)
     }
 }
 
@@ -99,6 +136,8 @@ private fun simpleParts(
     dependencies: List<ProjectDependencyEntity>,
     excludedDays: Set<Long>,
     retained: Map<Long, Int>,
+    frozen: Map<Long, Int>,
+    prior: Map<Long, Int>,
     today: Long
 ): List<DesiredTask> {
     val titles = nodes.associate { it.id to it.title }
@@ -106,10 +145,11 @@ private fun simpleParts(
     val preds = dependencies.groupBy({ it.successorId }, { it.predecessorId })
     val planNodes = nodes.map { n ->
         val extra = maxOf(0, retained[n.id] ?: 0)
+        val locked = maxOf(0, frozen[n.id] ?: 0)
         val done = if (n.isMilestone || n.estimatedMinutes <= 0) {
             n.doneMinutes
         } else {
-            minOf(n.estimatedMinutes, n.doneMinutes + extra)
+            maxOf(0, minOf(n.estimatedMinutes, n.doneMinutes + extra) - locked)
         }
         PlanNode(
             id = n.id,
@@ -134,11 +174,17 @@ private fun simpleParts(
     )
     val plan = planProject(config, planNodes, today)
     return plan.parts.map { part ->
+        val before = prior[part.nodeId] ?: 0
         DesiredTask(
             key = projectPartKey(project.id, part.nodeId, part.day),
             projectId = project.id,
             nodeId = part.nodeId,
-            title = projectTodayLabel(project.name, part, titles[part.nodeId].orEmpty()),
+            title = projectObjectiveTitle(
+                project.name,
+                titles[part.nodeId].orEmpty(),
+                before + part.partIndex,
+                before + part.totalParts
+            ),
             date = part.day,
             estimatedMinutes = part.minutes,
             priority = priorities[part.nodeId] ?: 0
@@ -193,25 +239,30 @@ private fun advancedCells(
 ): List<DesiredTask> {
     val leaves = leafNodeIds(nodes)
     val byId = nodes.associateBy { it.id }
-    return assignments
-        .filter { it.epochDay >= today && it.nodeId in leaves }
-        .mapNotNull { a ->
-            val n = byId[a.nodeId]
-            if (n == null || n.completed) {
-                null
-            } else {
-                DesiredTask(
-                    key = projectCellKey(project.id, n.id, a.epochDay),
-                    projectId = project.id,
-                    nodeId = n.id,
-                    title = project.name + ": " + n.title,
-                    date = a.epochDay,
-                    estimatedMinutes = null,
-                    priority = n.priority
-                )
-            }
-        }
-        .sortedWith(compareBy<DesiredTask>({ it.date }, { it.key }))
+    val daysByNode: Map<Long, List<Long>> = assignments
+        .filter { it.nodeId in leaves }
+        .groupBy({ it.nodeId }, { it.epochDay })
+        .mapValues { entry -> entry.value.distinct().sorted() }
+    val out = ArrayList<DesiredTask>()
+    for (a in assignments) {
+        if (a.epochDay < today || a.nodeId !in leaves) continue
+        val n = byId[a.nodeId] ?: continue
+        if (n.completed) continue
+        val days = daysByNode[n.id].orEmpty()
+        val x = days.indexOf(a.epochDay) + 1
+        out.add(
+            DesiredTask(
+                key = projectCellKey(project.id, n.id, a.epochDay),
+                projectId = project.id,
+                nodeId = n.id,
+                title = projectObjectiveTitle(project.name, n.title, x, days.size),
+                date = a.epochDay,
+                estimatedMinutes = null,
+                priority = n.priority
+            )
+        )
+    }
+    return out.sortedWith(compareBy<DesiredTask>({ it.date }, { it.key }))
 }
 
 private fun advancedDaily(
@@ -269,6 +320,20 @@ private fun looseTasks(
             )
         }
 }
+
+// Una clave de parte (SIMPLE dinamico) lleva ":N" y ":D". Las diarias ("P1:DAY5") no llevan ":N".
+fun isProjectPartKey(key: String): Boolean = key.contains(":N") && key.contains(":D")
+
+fun TaskEntity.isProjectTask(): Boolean = projectKey != null
+
+// Titulo y fecha los gestiona el proyecto, salvo en las tareas sueltas (clave acabada en ":L")
+fun TaskEntity.isProjectDateLocked(): Boolean {
+    val k = projectKey ?: return false
+    return !k.endsWith(":L")
+}
+
+// Si una parte deseada tiene la clave de una tarea ya completada, usa la clave con sufijo #n
+// (el menor n libre) para que el trabajo restante no quede bloqueado por la completada.
 
 // Compara lo deseado con lo existente (solo tareas del mismo proyecto con projectKey).
 // Reglas:

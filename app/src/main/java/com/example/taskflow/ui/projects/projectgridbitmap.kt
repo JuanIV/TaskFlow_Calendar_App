@@ -9,7 +9,7 @@ import android.graphics.Paint
 import androidx.core.content.FileProvider
 import com.example.taskflow.domain.GridDays
 import com.example.taskflow.domain.GridRow
-import com.example.taskflow.domain.cellColor
+import com.example.taskflow.domain.cellColorFor
 import com.example.taskflow.domain.weekCellsOf
 import java.io.File
 import java.io.FileOutputStream
@@ -111,7 +111,7 @@ fun renderGridPng(
             val paint = if (!planned) {
                 emptyPaint
             } else {
-                Paint().apply { color = cellColor(rootIndex, row.depth, completed) }
+                Paint().apply { color = cellColorFor(row.rootColorArgb, rootIndex, row.depth, completed) }
             }
             canvas.drawRect(
                 x.toFloat() + 1f,

@@ -15,6 +15,9 @@ interface ProjectCellDao {
     @Query("DELETE FROM project_cell_assignments WHERE nodeId IN (SELECT id FROM project_nodes WHERE projectId = :projectId)")
     suspend fun deleteForProject(projectId: Long)
 
+    @Query("DELETE FROM project_cell_assignments WHERE nodeId = :nodeId")
+    suspend fun deleteForNode(nodeId: Long)
+
     @Query("SELECT a.* FROM project_cell_assignments a INNER JOIN project_nodes n ON a.nodeId = n.id WHERE n.projectId = :projectId")
     suspend fun getForProject(projectId: Long): List<ProjectCellAssignmentEntity>
 

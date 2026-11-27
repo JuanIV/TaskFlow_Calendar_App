@@ -30,6 +30,7 @@ import com.example.taskflow.domain.getRoutineTasksForNotification
 import com.example.taskflow.domain.getTodayTasksForNotification
 import com.example.taskflow.domain.isQuietNow
 import com.example.taskflow.domain.isRoutineNotificationVisible
+import com.example.taskflow.domain.isProjectDateLocked
 import com.example.taskflow.domain.logicalDateNow
 import com.example.taskflow.domain.routineAppliesOn
 import com.example.taskflow.domain.taskAppliesOn
@@ -334,7 +335,7 @@ class NotificationRefresher @Inject constructor(
             .setAutoCancel(true)
             .addAction(0, context.getString(R.string.s2_complete),
                 receiverIntent(id, NotificationActions.COMPLETE_ONE_TASK, NotificationActions.EXTRA_TASK_ID to taskId))
-        if (task.date != null) {
+        if (task.date != null && !task.isProjectDateLocked()) {
             builder.addAction(0, context.getString(R.string.s2_postpone_tomorrow),
                 receiverIntent(id + 1, NotificationActions.POSTPONE_ONE_TASK, NotificationActions.EXTRA_TASK_ID to taskId))
         }
@@ -424,14 +425,6 @@ class NotificationRefresher @Inject constructor(
             title = context.getString(R.string.s2_summary_morning_title)
             events.take(4).forEach { lines.add(eventLine(it)) }
             lines.add(context.getString(R.string.s2_summary_counts, pendingTasks.size, routinesToday.size))
-            val projectLines = ArrayList<String>()
-            for ((project, plan) in projectRepository.getActiveProjectPlansSync(today)) {
-                val titles = projectRepository.getNodeTitles(project.id)
-                for (item in com.example.taskflow.domain.projectTodayItems(project.id, project.name, plan, titles, today)) {
-                    projectLines.add(item.label)
-                }
-            }
-            projectLines.take(3).forEach { lines.add(it) }
         } else {
             val streak = currentStreak(dayRecordsToStatuses(recordDao.getAllDayRecordsSync()), todayState.globalState(today))
             if (pendingTasks.isNotEmpty() || pendingRoutines.isNotEmpty()) {

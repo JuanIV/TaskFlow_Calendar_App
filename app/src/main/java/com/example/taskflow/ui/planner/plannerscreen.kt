@@ -66,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.taskflow.R
 import com.example.taskflow.data.entities.TaskEntity
 import com.example.taskflow.domain.formatMinute
+import com.example.taskflow.domain.isProjectDateLocked
 import com.example.taskflow.ui.calendar.weekStartOf
 import com.example.taskflow.ui.tasks.durationText
 import kotlinx.coroutines.delay
@@ -323,7 +324,7 @@ private fun PlannerTaskCard(
     val cancelCb by rememberUpdatedState(onDragCancel)
     val currentTask by rememberUpdatedState(task)
 
-    val gesture = if (!task.isCompleted) {
+    val gesture = if (!task.isCompleted && !task.isProjectDateLocked()) {
         Modifier.pointerInput(task.id) {
             detectDragGesturesAfterLongPress(
                 onDragStart = { offset ->
