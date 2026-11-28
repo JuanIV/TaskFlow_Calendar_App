@@ -1,6 +1,14 @@
 package com.example.taskflow.ui.projects
 
 import android.widget.Toast
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.example.taskflow.ui.navigation.ImmersiveState
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import java.time.DayOfWeek
@@ -108,6 +116,27 @@ fun ProjectDetailScreen(
     var shareGridRequested by remember { mutableStateOf(false) }
     var treeMode by rememberSaveable { mutableStateOf(false) }
     var addChildConfirm by remember { mutableStateOf<Long?>(null) }
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
+    val fullscreenActive = fullscreen && advanced
+    DisposableEffect(fullscreenActive) {
+        val activity = context as? android.app.Activity
+        val window = activity?.window
+        val controller = if (window != null) WindowCompat.getInsetsController(window, window.decorView) else null
+        if (fullscreenActive) {
+            ImmersiveState.active.value = true
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.systemBars())
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+        onDispose {
+            if (fullscreenActive) {
+                controller?.show(WindowInsetsCompat.Type.systemBars())
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                ImmersiveState.active.value = false
+            }
+        }
+    }
+    BackHandler(enabled = fullscreenActive) { fullscreen = false }
     val scope = rememberCoroutineScope()
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -155,7 +184,7 @@ fun ProjectDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            if (!fullscreenActive) TopAppBar(
                 title = { Text(currentProject.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -207,13 +236,13 @@ fun ProjectDetailScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { newNodeParent = null; showNewNode = true }) {
+            if (!fullscreenActive) FloatingActionButton(onClick = { newNodeParent = null; showNewNode = true }) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.p1c_add_root))
             }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            if (!fullscreenActive) Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     LinearProgressIndicator(
                         progress = { currentPlan.progressPercent / 100f },
@@ -280,6 +309,13 @@ fun ProjectDetailScreen(
                         enabled = !editMode,
                         label = { Text(stringResource(R.string.pt_tree_mode)) }
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = { fullscreen = !fullscreen }) {
+                        Icon(
+                            if (fullscreenActive) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                            contentDescription = stringResource(if (fullscreenActive) R.string.pt_fullscreen_exit else R.string.pt_fullscreen)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     if (!editMode) {
                         IconButton(onClick = { viewModel.enterGridEditMode() }) {

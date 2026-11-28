@@ -55,14 +55,14 @@ class ProjectGridRangeTest {
     }
 
     @Test
-    fun `completed leaf is done only up to its completion day`() {
+    fun `completed leaf is done on all its planned days`() {
         val rows = buildGridRows(
             listOf(node(1)), days,
             mapOf(1L to mapOf(mon to 60, mon + 1 to 60, mon + 2 to 60)),
             setOf(1L), emptySet(),
             mapOf(1L to mon + 1), emptySet()
         )
-        assertEquals(listOf(true, true, false), rows.single().cells.take(3).map { it.completed })
+        assertEquals(listOf(true, true, true), rows.single().cells.take(3).map { it.completed })
     }
 
     @Test

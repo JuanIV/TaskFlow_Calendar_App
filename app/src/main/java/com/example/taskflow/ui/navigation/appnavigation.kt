@@ -55,6 +55,7 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val screens = listOf(Screen.Calendar, Screen.Tasks, Screen.Projects, Screen.Routines, Screen.Statistics)
+    val immersive by ImmersiveState.active.collectAsState()
 
     LaunchedEffect(pendingRoute) {
         if (pendingRoute != null) {
@@ -65,7 +66,7 @@ fun AppNavigation(
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            if (!immersive) NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 

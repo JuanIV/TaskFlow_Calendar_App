@@ -154,12 +154,10 @@ fun buildGridRows(
         if (kids.isEmpty()) {
             val planned = leafPlanned[node.id].orEmpty().filter { it.value > 0 }
             val nodeDone = leafCompleted.contains(node.id)
-            val cutoff = completionDays[node.id]
             val done = HashSet<Long>()
             val pending = HashSet<Long>()
             for (day in planned.keys) {
-                val isDone = (nodeDone && (cutoff == null || day <= cutoff)) ||
-                    completedCells.contains(Pair(node.id, day))
+                val isDone = nodeDone || completedCells.contains(Pair(node.id, day))
                 if (isDone) done.add(day) else pending.add(day)
             }
             return SubtreeInfo(planned, done, pending, nodeDone)
